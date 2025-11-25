@@ -297,7 +297,16 @@ export const PatientHistoryPage = () => {
                                     <Icon icon="lucide:more-vertical" />
                                   </Button>
                                 </DropdownTrigger>
-                                <DropdownMenu aria-label="Actions">
+                                <DropdownMenu aria-label="Actions"
+                                  onAction={(key) => {
+                                      if (key === "Descargar PDF") {
+                                        const link = document.createElement("a");
+                                        link.href = "https://fwluwiovzewlrcvkptbw.supabase.co/storage/v1/object/public/expedientes/reports/paciente_31/reporte_1763950696477.pdf";
+                                        link.download = "reporte_P-1001.pdf"; // nombre del archivo al guardar
+                                        link.click();
+                                      }
+                                    }}
+                                >
                                   <DropdownItem key="Descargar PDF">Descargar PDF</DropdownItem>
                                   <DropdownItem key="Enviar al Paciente">Enviar al Paciente</DropdownItem>
                                   <DropdownItem key="Imprimir Informe">Imprimir Informe</DropdownItem>

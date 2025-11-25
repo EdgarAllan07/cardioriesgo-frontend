@@ -2,9 +2,17 @@
 
 import { MainLayout } from "@/layouts/main-layout";
 
-export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
+export default function ProtectedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const handleLogout = () => {
-    document.cookie = "auth=false; path=/";
+    // Clear the auth-token cookie by setting max-age to 0
+    document.cookie = "auth-token=; path=/; max-age=0";
+    // Also clear the legacy 'auth' cookie just in case
+    document.cookie = "auth=; path=/; max-age=0";
+
     window.location.href = "/login";
   };
 

@@ -90,12 +90,12 @@ export function usePatients() {
       alcohol: "moderate",
       physicalActivity: "sedentary",
       familyHistory: true,
-      symptoms: ["chest pain", "shortness of breath"],
+      symptoms: ["Dolor en el pecho", "Problemas para respirar"],
       riskScore: 85,
       diseases: [
-        { name: "Coronary Artery Disease", probability: 0.78 },
-        { name: "Hypertension", probability: 0.92 },
-        { name: "Type 2 Diabetes", probability: 0.45 }
+        { name: "Arterial Coronaria", probability: 0.78 },
+        { name: "Hipertensión Arterial", probability: 0.92 },
+        { name: "Diabetes Tipo 2", probability: 0.45 }
       ]
     },
     {

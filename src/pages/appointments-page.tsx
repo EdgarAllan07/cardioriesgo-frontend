@@ -1,6 +1,5 @@
-"use client"
+"use client";
 import React from "react";
-import { useRouter } from "next/navigation";
 import {
   Card,
   CardBody,
@@ -15,10 +14,6 @@ import {
   Chip,
   Pagination,
   Input,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
   Modal,
   ModalContent,
   ModalHeader,
@@ -27,41 +22,55 @@ import {
   Select,
   SelectItem,
   Textarea,
-  DatePicker,
   useDisclosure,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { motion } from "framer-motion";
 import { addToast } from "@heroui/react";
-import { parseDate, getLocalTimeZone } from "@internationalized/date";
+import axios from "axios";
 
-interface Doctor {
-  id: string;
-  name: string;
+interface Paciente {
+  id_paciente: number;
+  nombre_completo: string;
+  email?: string;
+  edad?: number;
+  sexo?: string;
 }
 
-interface Patient {
-  id: string;
-  name: string;
+interface Usuario {
+  id_usuario: number;
+  nombre: string;
+  apellido: string;
+  correo: string;
 }
 
 interface Appointment {
-  id: string;
-  patientId: string;
-  patientName: string;
-  doctorId: string;
-  doctorName: string;
-  date: string;
-  time: string;
-  reason: string;
-  status: "Programada" | "Completada" | "Cancelada";
-  notes?: string;
-  reminderSent?: boolean;
-  createdAt: string;
-  updatedAt: string;
+  id_cita?: string | number;
+  id_paciente?: number;
+  id_usuario?: string | number;
+  fecha_cita: string; // This is a timestamp from backend
+  motivo: string;
+  estado: "Programada" | "Completada" | "Cancelada";
+  observaciones?: string;
+  created_at?: string;
+  updated_at?: string;
+  paciente?: Paciente;
+  usuario?: Usuario;
 }
 
 export const AppointmentsPage = () => {
+  const getUserId = () => {
+    if (typeof document === "undefined") return null;
+    const match = document.cookie.match(new RegExp("(^| )userId=([^;]+)"));
+    return match ? match[2] : null;
+  };
+
+  const getToken = () => {
+    if (typeof document === "undefined") return null;
+    const match = document.cookie.match(new RegExp("(^| )auth-token=([^;]+)"));
+    return match ? match[2] : null;
+  };
+
+  const userId = getUserId();
 
   const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
 
@@ -70,6 +79,7 @@ export const AppointmentsPage = () => {
   const [filteredAppointments, setFilteredAppointments] = React.useState<
     Appointment[]
   >([]);
+  const [patients, setPatients] = React.useState<Paciente[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -77,7 +87,9 @@ export const AppointmentsPage = () => {
   const [selectedAppointment, setSelectedAppointment] =
     React.useState<Appointment | null>(null);
   const [isEditing, setIsEditing] = React.useState(false);
-  const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = React.useState<
+    string | number | null
+  >(null);
 
   // Estados para filtros
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -87,140 +99,106 @@ export const AppointmentsPage = () => {
 
   // Estados para el formulario de cita
   const [formData, setFormData] = React.useState({
-    patientId: "",
-    doctorId: "",
-    date: "",
-    time: "",
-    reason: "",
-    status: "Programada" as "Programada" | "Completada" | "Cancelada",
-    notes: "",
+    id_paciente: "",
+    fecha_cita: "",
+    hora_cita: "",
+    motivo: "",
+    estado: "Programada" as "Programada" | "Completada" | "Cancelada",
+    observaciones: "",
   });
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = React.useCallback(async () => {
+    if (!userId) {
+      console.error("No userId found");
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
 
-    // Simulación de llamada a API
-    setTimeout(() => {
-      const mockAppointments: Appointment[] = [
+    try {
+      const token = getToken();
+      const response = await axios.get(
+        `http://localhost:3000/api/citas/${userId}`,
         {
-          id: "A-001",
-          patientId: "P-1001",
-          patientName: "John Smith",
-          doctorId: "D-001",
-          doctorName: "Dr. Juan Pérez",
-          date: "2024-07-20",
-          time: "09:30",
-          reason: "Control de presión arterial",
-          status: "Programada",
-          notes: "Paciente con hipertensión controlada",
-          reminderSent: true,
-          createdAt: "2024-07-15T10:30:00",
-          updatedAt: "2024-07-15T10:30:00",
-        },
-        {
-          id: "A-002",
-          patientId: "P-1002",
-          patientName: "Sarah Johnson",
-          doctorId: "D-002",
-          doctorName: "Dra. María García",
-          date: "2024-07-18",
-          time: "11:00",
-          reason: "Evaluación de riesgo cardiovascular",
-          status: "Programada",
-          reminderSent: true,
-          createdAt: "2024-07-14T14:20:00",
-          updatedAt: "2024-07-14T14:20:00",
-        },
-        {
-          id: "A-003",
-          patientId: "P-1003",
-          patientName: "Michael Brown",
-          doctorId: "D-001",
-          doctorName: "Dr. Juan Pérez",
-          date: "2024-07-15",
-          time: "16:45",
-          reason: "Seguimiento post-operatorio",
-          status: "Completada",
-          notes: "Paciente evoluciona favorablemente",
-          createdAt: "2024-07-10T09:15:00",
-          updatedAt: "2024-07-15T17:30:00",
-        },
-        {
-          id: "A-004",
-          patientId: "P-1004",
-          patientName: "Emily Davis",
-          doctorId: "D-003",
-          doctorName: "Dr. Carlos Rodríguez",
-          date: "2024-07-16",
-          time: "10:15",
-          reason: "Consulta por dolor en el pecho",
-          status: "Cancelada",
-          notes: "Paciente reprogramará",
-          createdAt: "2024-07-12T11:20:00",
-          updatedAt: "2024-07-15T08:45:00",
-        },
-        {
-          id: "A-005",
-          patientId: "P-1005",
-          patientName: "Robert Wilson",
-          doctorId: "D-002",
-          doctorName: "Dra. María García",
-          date: "2024-07-21",
-          time: "15:00",
-          reason: "Revisión de electrocardiograma",
-          status: "Programada",
-          createdAt: "2024-07-16T13:10:00",
-          updatedAt: "2024-07-16T13:10:00",
-        },
-      ];
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      setAppointments(mockAppointments);
-      setFilteredAppointments(mockAppointments);
-      setTotalPages(Math.ceil(mockAppointments.length / 10));
+      console.log("Appointments fetched:", response.data);
+
+      const data = Array.isArray(response.data) ? response.data : [];
+      setAppointments(data);
+      setFilteredAppointments(data);
+      setTotalPages(Math.ceil(data.length / 10));
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+      addToast({
+        title: "Error",
+        description: "No se pudieron cargar las citas",
+        color: "danger",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
-  };
+    }
+  }, [userId]);
 
-  // Datos de ejemplo para doctores y pacientes
-  const doctors: Doctor[] = [
-    { id: "D-001", name: "Dr. Juan Pérez" },
-    { id: "D-002", name: "Dra. María García" },
-    { id: "D-003", name: "Dr. Carlos Rodríguez" },
-  ];
+  const fetchPatients = React.useCallback(async () => {
+    if (!userId) return;
 
-  const patients: Patient[] = [
-    { id: "P-1001", name: "John Smith" },
-    { id: "P-1002", name: "Sarah Johnson" },
-    { id: "P-1003", name: "Michael Brown" },
-    { id: "P-1004", name: "Emily Davis" },
-    { id: "P-1005", name: "Robert Wilson" },
-  ];
+    try {
+      const token = getToken();
+      const response = await axios.get(
+        `http://localhost:3000/api/pacientes/${userId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      console.log("Patients fetched:", response.data);
+      const data = Array.isArray(response.data) ? response.data : [];
+      setPatients(data);
+    } catch (error) {
+      console.error("Error fetching patients:", error);
+      addToast({
+        title: "Error",
+        description: "No se pudieron cargar los pacientes",
+        color: "danger",
+      });
+    }
+  }, [userId]);
 
   // Función para filtrar citas
   const filterAppointments = () => {
     let filtered = [...appointments];
 
-    // Filtrar por búsqueda
+    // Filtrar por búsqueda (motivo o paciente)
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (appointment) =>
-          appointment.patientName.toLowerCase().includes(query) ||
-          appointment.doctorName.toLowerCase().includes(query)
+          appointment.motivo?.toLowerCase().includes(query) ||
+          appointment.paciente?.nombre_completo?.toLowerCase().includes(query)
       );
     }
 
     // Filtrar por estado
     if (statusFilter !== "all") {
       filtered = filtered.filter(
-        (appointment) => appointment.status === statusFilter
+        (appointment) => appointment.estado === statusFilter
       );
     }
 
     // Filtrar por rango de fechas
     if (startDate && endDate) {
       filtered = filtered.filter((appointment) => {
-        const appointmentDate = new Date(appointment.date);
+        const appointmentDate = new Date(appointment.fecha_cita);
         const start = new Date(startDate);
         const end = new Date(endDate);
         return appointmentDate >= start && appointmentDate <= end;
@@ -235,27 +213,26 @@ export const AppointmentsPage = () => {
   // Cargar citas al iniciar
   React.useEffect(() => {
     fetchAppointments();
-  }, []);
+    fetchPatients();
+  }, [fetchAppointments, fetchPatients]);
 
   // Filtrar citas cuando cambian los filtros
   React.useEffect(() => {
     filterAppointments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, statusFilter, startDate, endDate, appointments]);
-
-  // Función para cargar citas desde el API
 
   // Función para abrir el modal de nueva cita
   const handleNewAppointment = () => {
     setIsEditing(false);
     setSelectedAppointment(null);
     setFormData({
-      patientId: "",
-      doctorId: "",
-      date: "",
-      time: "",
-      reason: "",
-      status: "Programada",
-      notes: "",
+      id_paciente: "",
+      fecha_cita: "",
+      hora_cita: "",
+      motivo: "",
+      estado: "Programada",
+      observaciones: "",
     });
     onOpen();
   };
@@ -264,56 +241,70 @@ export const AppointmentsPage = () => {
   const handleEditAppointment = (appointment: Appointment) => {
     setIsEditing(true);
     setSelectedAppointment(appointment);
+    // Extract date and time from timestamp
+    const appointmentDate = new Date(appointment.fecha_cita);
+    const dateStr = appointmentDate.toISOString().split("T")[0];
+    const timeStr = appointmentDate.toTimeString().slice(0, 5);
+
     setFormData({
-      patientId: appointment.patientId,
-      doctorId: appointment.doctorId,
-      date: appointment.date,
-      time: appointment.time,
-      reason: appointment.reason,
-      status: appointment.status,
-      notes: appointment.notes || "",
+      id_paciente: appointment.id_paciente?.toString() || "",
+      fecha_cita: dateStr,
+      hora_cita: timeStr,
+      motivo: appointment.motivo,
+      estado: appointment.estado,
+      observaciones: appointment.observaciones || "",
     });
     onOpen();
   };
 
   // Función para confirmar eliminación de cita
-  const handleDeleteConfirm = (id: string) => {
-    setConfirmDelete(id);
+  const handleDeleteConfirm = (id: string | number | undefined) => {
+    if (id) setConfirmDelete(id);
   };
 
   // Función para eliminar cita
   const handleDeleteAppointment = async () => {
     if (!confirmDelete) return;
 
-    // Simulación de llamada a API DELETE
     setIsLoading(true);
 
-    setTimeout(() => {
-      const updatedAppointments = appointments.filter(
-        (appointment) => appointment.id !== confirmDelete
-      );
+    try {
+      const token = getToken();
+      await axios.delete(`http://localhost:3000/api/citas/${confirmDelete}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      setAppointments(updatedAppointments);
+      // Refresh appointments list
+      await fetchAppointments();
       setConfirmDelete(null);
-      setIsLoading(false);
 
       addToast({
         title: "Cita eliminada",
         description: "La cita ha sido eliminada correctamente",
         color: "success",
       });
-    }, 1000);
+    } catch (error) {
+      console.error("Error deleting appointment:", error);
+      addToast({
+        title: "Error",
+        description: "No se pudo eliminar la cita",
+        color: "danger",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Función para guardar cita (crear o actualizar)
   const handleSaveAppointment = async () => {
     // Validar campos requeridos
     if (
-      !formData.patientId ||
-      !formData.doctorId ||
-      !formData.date ||
-      !formData.time ||
-      !formData.reason
+      !formData.id_paciente ||
+      !formData.fecha_cita ||
+      !formData.hora_cita ||
+      !formData.motivo
     ) {
       addToast({
         title: "Error",
@@ -325,31 +316,32 @@ export const AppointmentsPage = () => {
 
     setIsSubmitting(true);
 
-    // Simulación de llamada a API POST o PUT
-    setTimeout(() => {
-      if (isEditing && selectedAppointment) {
-        // Actualizar cita existente
-        const updatedAppointments = appointments.map((appointment) =>
-          appointment.id === selectedAppointment.id
-            ? {
-                ...appointment,
-                patientId: formData.patientId,
-                patientName:
-                  patients.find((p) => p.id === formData.patientId)?.name || "",
-                doctorId: formData.doctorId,
-                doctorName:
-                  doctors.find((d) => d.id === formData.doctorId)?.name || "",
-                date: formData.date,
-                time: formData.time,
-                reason: formData.reason,
-                status: formData.status,
-                notes: formData.notes,
-                updatedAt: new Date().toISOString(),
-              }
-            : appointment
-        );
+    try {
+      const token = getToken();
+      // Combine date and time into ISO timestamp (without Z suffix)
+      const combinedDateTime = new Date(
+        `${formData.fecha_cita}T${formData.hora_cita}:00`
+      );
+      const isoString = combinedDateTime.toISOString().replace("Z", "");
 
-        setAppointments(updatedAppointments);
+      if (isEditing && selectedAppointment?.id_cita) {
+        // Actualizar cita existente
+        await axios.patch(
+          `http://localhost:3000/api/citas/${selectedAppointment.id_cita}`,
+          {
+            id_paciente: parseInt(formData.id_paciente),
+            fecha_cita: isoString,
+            motivo: formData.motivo,
+            estado: formData.estado,
+            observaciones: formData.observaciones,
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         addToast({
           title: "Cita actualizada",
@@ -358,24 +350,23 @@ export const AppointmentsPage = () => {
         });
       } else {
         // Crear nueva cita
-        const newAppointment: Appointment = {
-          id: `A-${(appointments.length + 1).toString().padStart(3, "0")}`,
-          patientId: formData.patientId,
-          patientName:
-            patients.find((p) => p.id === formData.patientId)?.name || "",
-          doctorId: formData.doctorId,
-          doctorName:
-            doctors.find((d) => d.id === formData.doctorId)?.name || "",
-          date: formData.date,
-          time: formData.time,
-          reason: formData.reason,
-          status: formData.status,
-          notes: formData.notes,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-
-        setAppointments([...appointments, newAppointment]);
+        await axios.post(
+          "http://localhost:3000/api/citas",
+          {
+            id_usuario: userId,
+            id_paciente: parseInt(formData.id_paciente),
+            fecha_cita: isoString,
+            motivo: formData.motivo,
+            estado: formData.estado,
+            observaciones: formData.observaciones,
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         addToast({
           title: "Cita creada",
@@ -384,9 +375,19 @@ export const AppointmentsPage = () => {
         });
       }
 
-      setIsSubmitting(false);
+      // Refresh appointments list
+      await fetchAppointments();
       onClose();
-    }, 1500);
+    } catch (error) {
+      console.error("Error saving appointment:", error);
+      addToast({
+        title: "Error",
+        description: "No se pudo guardar la cita",
+        color: "danger",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Función para obtener el color del badge según el estado
@@ -407,6 +408,7 @@ export const AppointmentsPage = () => {
   const isUpcoming = (dateStr: string) => {
     const appointmentDate = new Date(dateStr);
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const diffTime = appointmentDate.getTime() - today.getTime();
     const diffDays = diffTime / (1000 * 3600 * 24);
     return diffDays >= 0 && diffDays <= 2;
@@ -427,6 +429,15 @@ export const AppointmentsPage = () => {
       day: "numeric",
     };
     return new Date(dateStr).toLocaleDateString("es-ES", options);
+  };
+
+  // Formatear hora para mostrar
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
@@ -451,7 +462,7 @@ export const AppointmentsPage = () => {
         <CardHeader className="flex flex-col gap-4">
           <div className="flex flex-col md:flex-row gap-4">
             <Input
-              placeholder="Buscar por paciente o doctor..."
+              placeholder="Buscar por paciente o motivo..."
               value={searchQuery}
               onValueChange={setSearchQuery}
               startContent={
@@ -505,10 +516,10 @@ export const AppointmentsPage = () => {
           >
             <TableHeader>
               <TableColumn>PACIENTE</TableColumn>
-              <TableColumn>DOCTOR</TableColumn>
               <TableColumn>FECHA Y HORA</TableColumn>
               <TableColumn>MOTIVO</TableColumn>
               <TableColumn>ESTADO</TableColumn>
+              <TableColumn>OBSERVACIONES</TableColumn>
               <TableColumn>ACCIONES</TableColumn>
             </TableHeader>
             <TableBody
@@ -522,9 +533,9 @@ export const AppointmentsPage = () => {
             >
               {paginatedAppointments.map((appointment) => (
                 <TableRow
-                  key={appointment.id}
+                  key={appointment.id_cita}
                   className={
-                    isUpcoming(appointment.date)
+                    isUpcoming(appointment.fecha_cita)
                       ? "border-l-4 border-warning"
                       : ""
                   }
@@ -535,28 +546,23 @@ export const AppointmentsPage = () => {
                         <Icon icon="lucide:user" className="text-default-500" />
                       </div>
                       <div>
-                        <p className="font-medium">{appointment.patientName}</p>
+                        <p className="font-medium">
+                          {appointment.paciente?.nombre_completo ||
+                            "Sin nombre"}
+                        </p>
                         <p className="text-tiny text-default-500">
-                          ID: {appointment.patientId}
+                          {appointment.paciente?.email || ""}
                         </p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p>{appointment.doctorName}</p>
+                      <p>{formatDate(appointment.fecha_cita)}</p>
                       <p className="text-tiny text-default-500">
-                        ID: {appointment.doctorId}
+                        {formatTime(appointment.fecha_cita)}
                       </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p>{formatDate(appointment.date)}</p>
-                      <p className="text-tiny text-default-500">
-                        {appointment.time}
-                      </p>
-                      {isUpcoming(appointment.date) && (
+                      {isUpcoming(appointment.fecha_cita) && (
                         <Chip size="sm" color="warning" variant="flat">
                           Próxima
                         </Chip>
@@ -565,22 +571,21 @@ export const AppointmentsPage = () => {
                   </TableCell>
                   <TableCell>
                     <p className="max-w-[200px] truncate">
-                      {appointment.reason}
+                      {appointment.motivo}
                     </p>
-                    {appointment.reminderSent && (
-                      <div className="flex items-center gap-1 text-tiny text-success mt-1">
-                        <Icon icon="lucide:mail-check" width={14} height={14} />
-                        <span>Recordatorio enviado</span>
-                      </div>
-                    )}
                   </TableCell>
                   <TableCell>
                     <Chip
-                      color={getStatusColor(appointment.status)}
+                      color={getStatusColor(appointment.estado)}
                       variant="flat"
                     >
-                      {appointment.status}
+                      {appointment.estado}
                     </Chip>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-tiny text-default-500 max-w-[150px] truncate">
+                      {appointment.observaciones || "Sin observaciones"}
+                    </p>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -598,7 +603,7 @@ export const AppointmentsPage = () => {
                         variant="flat"
                         color="danger"
                         isIconOnly
-                        onPress={() => handleDeleteConfirm(appointment.id)}
+                        onPress={() => handleDeleteConfirm(appointment.id_cita)}
                       >
                         <Icon icon="lucide:trash" />
                       </Button>
@@ -647,38 +652,32 @@ export const AppointmentsPage = () => {
                   <Select
                     label="Paciente"
                     placeholder="Seleccione un paciente"
-                    value={formData.patientId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, patientId: e.target.value })
+                    selectedKeys={
+                      formData.id_paciente ? [formData.id_paciente] : []
                     }
+                    onSelectionChange={(keys) => {
+                      const selectedKey = Array.from(keys)[0] as string;
+                      setFormData({ ...formData, id_paciente: selectedKey });
+                    }}
                     isRequired
                   >
                     {patients.map((patient) => (
-                      <SelectItem key={patient.id}>{patient.name}</SelectItem>
-                    ))}
-                  </Select>
-
-                  <Select
-                    label="Doctor"
-                    placeholder="Seleccione un doctor"
-                    value={formData.doctorId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, doctorId: e.target.value })
-                    }
-                    isRequired
-                  >
-                    {doctors.map((doctor) => (
-                      <SelectItem key={doctor.id}>{doctor.name}</SelectItem>
-                    ))}
+                      <SelectItem
+                        key={patient.id_paciente.toString()}
+                     
+                      >
+                        {patient.nombre_completo}
+                      </SelectItem>
+                    ))} 
                   </Select>
 
                   <Input
                     type="date"
                     label="Fecha"
                     placeholder="Seleccione fecha"
-                    value={formData.date}
+                    value={formData.fecha_cita}
                     onChange={(e) =>
-                      setFormData({ ...formData, date: e.target.value })
+                      setFormData({ ...formData, fecha_cita: e.target.value })
                     }
                     isRequired
                   />
@@ -687,9 +686,9 @@ export const AppointmentsPage = () => {
                     type="time"
                     label="Hora"
                     placeholder="Seleccione hora"
-                    value={formData.time}
+                    value={formData.hora_cita}
                     onChange={(e) =>
-                      setFormData({ ...formData, time: e.target.value })
+                      setFormData({ ...formData, hora_cita: e.target.value })
                     }
                     isRequired
                   />
@@ -697,9 +696,9 @@ export const AppointmentsPage = () => {
                   <Input
                     label="Motivo"
                     placeholder="Ingrese motivo de la consulta"
-                    value={formData.reason}
+                    value={formData.motivo}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, reason: value })
+                      setFormData({ ...formData, motivo: value })
                     }
                     className="md:col-span-2"
                     isRequired
@@ -707,11 +706,11 @@ export const AppointmentsPage = () => {
 
                   <Select
                     label="Estado"
-                    value={formData.status}
+                    value={formData.estado}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        status: e.target.value as
+                        estado: e.target.value as
                           | "Programada"
                           | "Completada"
                           | "Cancelada",
@@ -726,10 +725,10 @@ export const AppointmentsPage = () => {
                   <div className="md:col-span-2">
                     <Textarea
                       label="Observaciones"
-                      placeholder="Ingrese notas adicionales"
-                      value={formData.notes}
+                      placeholder="Ingrese observaciones adicionales"
+                      value={formData.observaciones}
                       onValueChange={(value) =>
-                        setFormData({ ...formData, notes: value })
+                        setFormData({ ...formData, observaciones: value })
                       }
                       minRows={3}
                     />

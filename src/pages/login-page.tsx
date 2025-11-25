@@ -1,11 +1,21 @@
-"use client"
+"use client";
 import React from "react";
-import { Card, CardBody, CardHeader, Input, Button, Checkbox, Link, Divider } from "@heroui/react";
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  Input,
+  Button,
+  Checkbox,
+  Link,
+  Divider,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
+import toast, { Toaster } from "react-hot-toast";
 
 interface LoginPageProps {
-  onLogin: () => void;
+  onLogin: (email: string, password: string) => Promise<void>;
 }
 
 export const LoginPage = ({ onLogin }: LoginPageProps) => {
@@ -15,15 +25,20 @@ export const LoginPage = ({ onLogin }: LoginPageProps) => {
   const [rememberMe, setRememberMe] = React.useState(true);
   const [isSignUp, setIsSignUp] = React.useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+
+    try {
+      await onLogin(email, password);
+    } catch (error) {
+      console.error("Login failed", error);
+      toast.error(
+        "Las credenciales no coinciden. Por favor, verifique su correo y contraseña."
+      );
+    } finally {
       setIsLoading(false);
-      onLogin();
-    }, 1500);
+    }
   };
 
   const toggleMode = () => {
@@ -41,10 +56,15 @@ export const LoginPage = ({ onLogin }: LoginPageProps) => {
         <Card className="w-full">
           <CardHeader className="flex flex-col items-center gap-3 pb-0">
             <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary-100">
-              <Icon icon="lucide:heart-pulse" className="text-primary text-3xl" />
+              <Icon
+                icon="lucide:heart-pulse"
+                className="text-primary text-3xl"
+              />
             </div>
             <div className="flex flex-col items-center">
-              <h1 className="text-2xl font-bold text-foreground">CardioRiesgo IA</h1>
+              <h1 className="text-2xl font-bold text-foreground">
+                CardioRiesgo IA
+              </h1>
               <p className="text-small text-default-500">
                 Sistema de Evaluación de Riesgo Cardiovascular con IA
               </p>
@@ -61,7 +81,10 @@ export const LoginPage = ({ onLogin }: LoginPageProps) => {
                 variant="bordered"
                 isRequired
                 startContent={
-                  <Icon icon="lucide:mail" className="text-default-400 text-medium" />
+                  <Icon
+                    icon="lucide:mail"
+                    className="text-default-400 text-medium"
+                  />
                 }
               />
               <Input
@@ -73,49 +96,57 @@ export const LoginPage = ({ onLogin }: LoginPageProps) => {
                 variant="bordered"
                 isRequired
                 startContent={
-                  <Icon icon="lucide:lock" className="text-default-400 text-medium" />
+                  <Icon
+                    icon="lucide:lock"
+                    className="text-default-400 text-medium"
+                  />
                 }
               />
-              
+
               <div className="flex items-center justify-between">
-                <Checkbox isSelected={rememberMe} onValueChange={setRememberMe} size="sm">
+                <Checkbox
+                  isSelected={rememberMe}
+                  onValueChange={setRememberMe}
+                  size="sm"
+                >
                   Recordarme
                 </Checkbox>
-                <Link href="#" size="sm">¿Olvidó su contraseña?</Link>
               </div>
-              
-              <Button 
-                type="submit" 
-                color="primary" 
-                fullWidth 
+
+              <Button
+                type="submit"
+                color="primary"
+                fullWidth
                 isLoading={isLoading}
               >
                 {isSignUp ? "Registrarse" : "Iniciar Sesión"}
               </Button>
-              
+
               <Divider className="my-4" />
-              
+
               <div className="text-center text-small">
                 {isSignUp ? (
                   <p>
-                    ¿Ya tiene una cuenta?{" "}
-                    <Link href="#" onPress={toggleMode}>Iniciar Sesión</Link>
+                    ¿Ya tiene una nueva contraseña?{" "}
+                    <Link href="#" onPress={toggleMode}>
+                      Iniciar Sesión
+                    </Link>
                   </p>
                 ) : (
                   <p>
-                    ¿No tiene una cuenta?{" "}
-                    <Link href="#" onPress={toggleMode}>Registrarse</Link>
+                    ¿Olvidó su contraseña?{" "}
+                    <Link href="#" onPress={toggleMode}>
+                      Contacte al administrador para que se le otorgue una nueva
+                      contraseña
+                    </Link>
                   </p>
                 )}
               </div>
             </form>
           </CardBody>
         </Card>
-        
-        <div className="mt-6 text-center text-small text-default-500">
-          <p>© 2024 Sistema de Evaluación de Riesgo Cardiovascular con IA. Todos los derechos reservados.</p>
-        </div>
       </motion.div>
+      <Toaster position="top-center" reverseOrder={false} />
     </div>
   );
 };

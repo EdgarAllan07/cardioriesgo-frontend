@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import React from "react";
 import {
   Card,
@@ -18,66 +18,142 @@ import {
   Tab,
   Select,
   SelectItem,
+  Pagination,
+  Spinner,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import { addToast } from "@heroui/react";
+import axios from "axios";
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: "admin" | "doctor" | "nurse" | "staff";
-  status: "active" | "inactive";
+  id?: string | number;
+  nombre?: string;
+  correo?: string;
+  tipo?: string; // API returns "Doctor", "Admin", etc.
+  estado?: 1 | 0;
 }
 
 interface SystemSetting {
-  id: string;
-  name: string;
-  value: string | number | boolean;
-  type: "text" | "number" | "boolean" | "select";
+  id?: string | number;
+  name?: string;
+  value?: string | number | boolean;
+  type?: "text" | "number" | "boolean" | "select";
   options?: string[];
-  description: string;
+  description?: string;
+}
+
+interface SystemLog {
+  id?: string | number;
+  fecha_ahora: string;
+  nombre: string;
+  accion: string;
+  descripcion: string;
 }
 
 export const AdminPage = () => {
-  const [users, setUsers] = React.useState<User[]>([
-    {
-      id: "U-001",
-      name: "Dr. John Smith",
-      email: "john.smith@hospital.com",
-      role: "admin",
-      status: "active",
-    },
-    {
-      id: "U-002",
-      name: "Dr. Sarah Johnson",
-      email: "sarah.johnson@hospital.com",
-      role: "doctor",
-      status: "active",
-    },
-    {
-      id: "U-003",
-      name: "Nurse Emily Davis",
-      email: "emily.davis@hospital.com",
-      role: "nurse",
-      status: "active",
-    },
-    {
-      id: "U-004",
-      name: "Dr. Michael Brown",
-      email: "michael.brown@hospital.com",
-      role: "doctor",
-      status: "inactive",
-    },
-    {
-      id: "U-005",
-      name: "Admin Lisa Wilson",
-      email: "lisa.wilson@hospital.com",
-      role: "admin",
-      status: "active",
-    },
-  ]);
+  const [users, setUsers] = React.useState<User[]>([]);
+  const [logs, setLogs] = React.useState<SystemLog[]>([]);
+
+  // Pagination State for Users
+  const [page, setPage] = React.useState(1);
+  const [limit] = React.useState(10);
+  const [totalUsers, setTotalUsers] = React.useState(0);
+  const [isLoadingUsers, setIsLoadingUsers] = React.useState(false);
+
+  // Pagination State for Logs
+  const [logPage, setLogPage] = React.useState(1);
+  const [logLimit] = React.useState(10);
+  const [totalLogs, setTotalLogs] = React.useState(0);
+  const [isLoadingLogs, setIsLoadingLogs] = React.useState(false);
+
+  const getToken = () => {
+    const match = document.cookie.match(new RegExp("(^| )auth-token=([^;]+)"));
+    return match ? match[2] : null;
+   
+  };
+
+  // Fetch users
+  const fetchUsers = React.useCallback(async () => {
+    setIsLoadingUsers(true);
+    try {
+      const token = getToken();
+      const response = await axios.get(
+        `http://localhost:3000/api/usuarios?page=${page}&limit=${limit}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Handle different response structures
+      if (Array.isArray(response.data)) {
+        // Fallback: Client-side pagination if backend returns all data
+        const start = (page - 1) * limit;
+        const end = start + limit;
+        setUsers(response.data.slice(start, end));
+        setTotalUsers(response.data.length);
+      } else if (response.data && typeof response.data === "object") {
+        // Expected paginated response: { data: User[], total: number, ... }
+        setUsers(response.data.data || []);
+        setTotalUsers(response.data.total || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+      addToast({
+        title: "Error",
+        description: "Failed to load users",
+        color: "danger",
+      });
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, [page, limit]);
+
+  // Fetch logs
+  const fetchLogs = React.useCallback(async () => {
+    setIsLoadingLogs(true);
+    try {
+      const token = getToken();
+      const response = await axios.get(
+        `http://localhost:3000/api/system-logs?page=${logPage}&limit=${logLimit}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (Array.isArray(response.data)) {
+        // Fallback: Client-side pagination
+        const start = (logPage - 1) * logLimit;
+        const end = start + logLimit;
+        setLogs(response.data.slice(start, end));
+        setTotalLogs(response.data.length);
+      } else if (response.data && typeof response.data === "object") {
+        setLogs(response.data.data || []);
+        setTotalLogs(response.data.total || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch logs:", error);
+      addToast({
+        title: "Error",
+        description: "Failed to load system logs",
+        color: "danger",
+      });
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  }, [logPage, logLimit]);
+
+  React.useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  React.useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   const [settings, setSettings] = React.useState<SystemSetting[]>([
     {
@@ -121,36 +197,72 @@ export const AdminPage = () => {
   const [selectedTab, setSelectedTab] = React.useState("users");
   const [isAddingUser, setIsAddingUser] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isChangingPass, setIsChangingPass] = React.useState(false);
 
   // New user form
   const [newUser, setNewUser] = React.useState({
     name: "",
     email: "",
-    role: "doctor" as const,
+    role: "doctor",
     password: "",
     confirmPassword: "",
   });
 
-  const handleUserStatusChange = (userId: string, newStatus: boolean) => {
+  const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
+  const [passwordForm, setPasswordForm] = React.useState({
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const handleUserStatusChange = async (
+    userId: string | number | undefined,
+    newStatus: boolean | number
+  ) => {
+    if (!userId) return;
+
+    // Optimistic update
+    const previousUsers = [...users];
     setUsers(
       users.map((user) =>
-        user.id === userId
-          ? { ...user, status: newStatus ? "active" : "inactive" }
-          : user
+        user.id === userId ? { ...user, estado: newStatus ? 1 : 0 } : user
       )
     );
 
-    addToast({
-      title: "User Status Updated",
-      description: `User status has been ${
-        newStatus ? "activated" : "deactivated"
-      }`,
-      color: "success",
-    });
+    try {
+      const token = getToken();
+      await axios.patch(
+        `http://localhost:3000/api/usuarios/estado/${userId}`,
+        {
+          estado: newStatus ? 1 : 0,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      addToast({
+        title: "User Status Updated",
+        description: `User status has been ${
+          newStatus ? "activated" : "deactivated"
+        }`,
+        color: "success",
+      });
+    } catch (error) {
+      console.error("Failed to update user status:", error);
+      // Revert optimistic update
+      setUsers(previousUsers);
+      addToast({
+        title: "Error",
+        description: "Failed to update user status",
+        color: "danger",
+      });
+    }
   };
 
   const handleSettingChange = (
-    settingId: string,
+    settingId: string | number | undefined,
     value: string | number | boolean
   ) => {
     setSettings(
@@ -160,7 +272,7 @@ export const AdminPage = () => {
     );
   };
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (newUser.password !== newUser.confirmPassword) {
       addToast({
         title: "Error",
@@ -172,20 +284,39 @@ export const AdminPage = () => {
 
     setIsSaving(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      const newUserId = `U-${(users.length + 1).toString().padStart(3, "0")}`;
+    try {
+      // Split name into first and last name (simple heuristic)
+      const nameParts = newUser.name.trim().split(" ");
+      const nombre = nameParts[0];
+      const apellido = nameParts.slice(1).join(" ") || "";
 
-      setUsers([
-        ...users,
-        {
-          id: newUserId,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
-          status: "active",
+      // Map role to ID (Assuming 1=Admin, 2=Doctor, 3=Nurse, 4=Staff based on typical patterns, adjust if needed)
+      const roleMap: Record<string, number> = {
+        admin: 1,
+        doctor: 2,
+        nurse: 3,
+        staff: 4,
+      };
+      const tipo_usuario_id = roleMap[newUser.role] || 2;
+
+      const payload = {
+        nombre,
+        apellido,
+        correo: newUser.email,
+        contrasena_hash: newUser.password,
+        tipo_usuario_id,
+        estado: 1,
+      };
+
+      const token = getToken();
+      await axios.post("http://localhost:3000/api/usuarios", payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      ]);
+      });
+
+      // Refresh list
+      fetchUsers();
 
       setNewUser({
         name: "",
@@ -196,14 +327,74 @@ export const AdminPage = () => {
       });
 
       setIsAddingUser(false);
-      setIsSaving(false);
 
       addToast({
         title: "User Added",
         description: "New user has been added successfully",
         color: "success",
       });
-    }, 1000);
+    } catch (error) {
+      console.error("Failed to add user:", error);
+      addToast({
+        title: "Error",
+        description: "Failed to add user",
+        color: "danger",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      addToast({
+        title: "Error",
+        description: "Passwords do not match",
+        color: "danger",
+      });
+      return;
+    }
+
+    if (!selectedUser?.id) return;
+
+    setIsSaving(true);
+
+    try {
+      const token = getToken();
+      await axios.patch(
+        `http://localhost:3000/api/usuarios/contrasena/${selectedUser.id}`,
+        {
+          contrasena_hash: passwordForm.newPassword,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      addToast({
+        title: "Success",
+        description: "Password updated successfully",
+        color: "success",
+      });
+
+      setIsChangingPass(false);
+      setPasswordForm({
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setSelectedUser(null);
+    } catch (error) {
+      console.error("Failed to update password:", error);
+      addToast({
+        title: "Error",
+        description: "Failed to update password",
+        color: "danger",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSaveSettings = () => {
@@ -220,6 +411,9 @@ export const AdminPage = () => {
       });
     }, 1000);
   };
+
+  const usersPages = Math.ceil(totalUsers / limit);
+  const logsPages = Math.ceil(totalLogs / logLimit);
 
   return (
     <div className="space-y-6">
@@ -268,7 +462,31 @@ export const AdminPage = () => {
                 </Button>
               </CardHeader>
               <CardBody>
-                <Table removeWrapper aria-label="Users table">
+                <Table
+                  removeWrapper
+                  aria-label="Users table"
+                  bottomContent={
+                    usersPages > 0 ? (
+                      <div className="flex w-full justify-center ">
+                        <Pagination
+                                         classNames={{
+        wrapper: "gap-0 overflow-visible h-8 rounded-sm border border-divider",
+        item: "w-8 h-8 text-small rounded-none  text-black",
+        cursor:
+          "bg-linear-to-b shadow-lg from-primary  dark:from-default-300 dark:to-default-100 text-white font-bold",
+      }}
+                          isCompact
+                          showControls
+                          showShadow
+                          color="primary"
+                          page={page}
+                          total={usersPages}
+                          onChange={(page) => setPage(page)}
+                        />
+                      </div>
+                    ) : null
+                  }
+                >
                   <TableHeader>
                     <TableColumn>NOMBRE</TableColumn>
                     <TableColumn>CORREO</TableColumn>
@@ -276,8 +494,13 @@ export const AdminPage = () => {
                     <TableColumn>ESTADO</TableColumn>
                     <TableColumn>ACCIONES</TableColumn>
                   </TableHeader>
-                  <TableBody>
-                    {users.map((user) => (
+                  <TableBody
+                    items={users}
+                    loadingContent={<Spinner />}
+                    loadingState={isLoadingUsers ? "loading" : "idle"}
+                    emptyContent={"No users found"}
+                  >
+                    {(user) => (
                       <TableRow key={user.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -287,34 +510,31 @@ export const AdminPage = () => {
                                 className="text-default-500"
                               />
                             </div>
-                            <span>{user.name}</span>
+                            <span>{user.nombre}</span>
                           </div>
                         </TableCell>
-                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{user.correo}</TableCell>
                         <TableCell>
                           <div
                             className={`px-2 py-1 rounded-full text-tiny inline-block ${
-                              user.role === "admin"
+                              user.tipo?.toLowerCase() === "admin"
                                 ? "bg-secondary-100 text-secondary"
-                                : user.role === "doctor"
+                                : user.tipo?.toLowerCase() === "doctor"
                                 ? "bg-primary-100 text-primary"
                                 : "bg-default-100 text-default-600"
                             }`}
                           >
-                            {user.role.charAt(0).toUpperCase() +
-                              user.role.slice(1)}
+                            {user.tipo}
                           </div>
                         </TableCell>
                         <TableCell>
                           <Switch
                             size="sm"
-                            isSelected={user.status === "active"}
+                            isSelected={user.estado === 1}
                             onValueChange={(isSelected) =>
                               handleUserStatusChange(user.id, isSelected)
                             }
-                            color={
-                              user.status === "active" ? "success" : "danger"
-                            }
+                            color={user.estado === 1 ? "success" : "danger"}
                           />
                         </TableCell>
                         <TableCell>
@@ -324,28 +544,24 @@ export const AdminPage = () => {
                               variant="flat"
                               color="secondary"
                               isIconOnly
+                              onPress={() => {
+                                setSelectedUser(user);
+                                setIsChangingPass(true);
+                              }}
                             >
                               <Icon icon="lucide:edit" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="flat"
-                              color="danger"
-                              isIconOnly
-                            >
-                              <Icon icon="lucide:trash" />
                             </Button>
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </CardBody>
             </Card>
           </motion.div>
         </Tab>
-   
+
         <Tab
           key="logs"
           title={
@@ -368,65 +584,65 @@ export const AdminPage = () => {
                 </h2>
               </CardHeader>
               <CardBody>
-                <Table removeWrapper aria-label="System logs table">
+                <Table
+                  removeWrapper
+                  aria-label="System logs table"
+                  bottomContent={
+                    logsPages > 0 ? (
+                      <div className="flex w-full justify-center gap-4">
+                        <Pagination
+                       classNames={{
+        wrapper: "gap-0 overflow-visible h-8 rounded-sm border border-divider",
+        item: "w-8 h-8 text-small rounded-none  text-black",
+        cursor:
+          "bg-linear-to-b shadow-lg from-primary  dark:from-default-300 dark:to-default-100 text-white font-bold",
+      }}
+                          isCompact
+                          showControls
+                          showShadow
+                          color="primary"
+                          page={logPage}
+                          total={logsPages}
+                          onChange={(page) => setLogPage(page)}
+                        />
+                      </div>
+                    ) : null
+                  }
+                >
                   <TableHeader>
                     <TableColumn>FECHA Y HORA</TableColumn>
                     <TableColumn>USUARIO</TableColumn>
                     <TableColumn>ACCIÓN</TableColumn>
                     <TableColumn>DETALLES</TableColumn>
                   </TableHeader>
-                  <TableBody>
-                    {[
-                      {
-                        time: "2024-07-15 14:32:45",
-                        user: "Dr. John Smith",
-                        action: "Login",
-                        details: "Successful login",
-                      },
-                      {
-                        time: "2024-07-15 14:28:12",
-                        user: "Dr. Sarah Johnson",
-                        action: "Patient Evaluation",
-                        details: "Created evaluation for patient P-1002",
-                      },
-                      {
-                        time: "2024-07-15 13:45:23",
-                        user: "Admin Lisa Wilson",
-                        action: "User Management",
-                        details: "Updated user U-004 status to inactive",
-                      },
-                      {
-                        time: "2024-07-15 12:30:15",
-                        user: "Dr. John Smith",
-                        action: "Report Generation",
-                        details: "Generated PDF report for evaluation E-2001",
-                      },
-                      {
-                        time: "2024-07-15 11:22:37",
-                        user: "Dr. Sarah Johnson",
-                        action: "Patient Creation",
-                        details: "Created new patient P-1010",
-                      },
-                    ].map((log, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{log.time}</TableCell>
-                        <TableCell>{log.user}</TableCell>
+                  <TableBody
+                    items={logs}
+                    loadingContent={<Spinner />}
+                    loadingState={isLoadingLogs ? "loading" : "idle"}
+                    emptyContent={"No logs found"}
+                  >
+                    {(log) => (
+                      <TableRow key={log.id || Math.random()}>
+                        <TableCell>
+                          {new Date(log.fecha_ahora).toLocaleString()}
+                        </TableCell>
+                        <TableCell>{log.nombre}</TableCell>
                         <TableCell>
                           <div
                             className={`px-2 py-1 rounded-full text-tiny inline-block ${
-                              log.action === "Login"
+                              log.accion === "Login"
                                 ? "bg-success-100 text-success"
-                                : log.action.includes("Patient")
+                                : log.accion.includes("Patient")
                                 ? "bg-primary-100 text-primary"
                                 : "bg-default-100 text-default-600"
                             }`}
                           >
-                            {log.action}
+                            {log.accion}
                           </div>
                         </TableCell>
-                        <TableCell>{log.details}</TableCell>
+                        <TableCell>{log.descripcion}</TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </CardBody>
@@ -474,15 +690,13 @@ export const AdminPage = () => {
                   const selectedKey = Array.from(keys)[0] as string;
                   setNewUser({
                     ...newUser,
-                    role: selectedKey as User["role"],
-                  } as typeof newUser & { role: User["role"] });
+                    role: selectedKey as string,
+                  });
                 }}
                 isRequired
               >
                 <SelectItem key="admin">Administrador</SelectItem>
                 <SelectItem key="doctor">Doctor</SelectItem>
-                <SelectItem key="nurse">Enfermero/a</SelectItem>
-                <SelectItem key="staff">Personal</SelectItem>
               </Select>
               <Input
                 label="Contraseña"
@@ -522,6 +736,72 @@ export const AdminPage = () => {
                   }
                 >
                   Añadir Usuario
+                </Button>
+              </div>
+            </CardFooter>
+          </Card>
+        </motion.div>
+      )}
+      {isChangingPass && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        >
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <h2 className="text-lg font-semibold">Cambiar Contraseña</h2>
+            </CardHeader>
+            <CardBody className="space-y-4">
+              <Input
+                label="Nueva Contraseña"
+                placeholder="Ingrese nueva contraseña"
+                type="password"
+                value={passwordForm.newPassword}
+                onValueChange={(value) =>
+                  setPasswordForm({ ...passwordForm, newPassword: value })
+                }
+                isRequired
+              />
+              <Input
+                label="Confirmar Contraseña"
+                placeholder="Confirme nueva contraseña"
+                type="password"
+                value={passwordForm.confirmPassword}
+                onValueChange={(value) =>
+                  setPasswordForm({ ...passwordForm, confirmPassword: value })
+                }
+                isRequired
+              />
+            </CardBody>
+            <CardFooter>
+              <div className="flex justify-end gap-2 w-full">
+                <Button
+                  variant="flat"
+                  onPress={() => {
+                    setIsChangingPass(false);
+                    setPasswordForm({
+                      newPassword: "",
+                      confirmPassword: "",
+                    });
+                    setSelectedUser(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  color="primary"
+                  onPress={handleChangePassword}
+                  isLoading={isSaving}
+                  isDisabled={
+                    !passwordForm.newPassword ||
+                    !passwordForm.confirmPassword ||
+                    passwordForm.newPassword !== passwordForm.confirmPassword
+                  }
+                >
+                  Guardar Cambios
                 </Button>
               </div>
             </CardFooter>

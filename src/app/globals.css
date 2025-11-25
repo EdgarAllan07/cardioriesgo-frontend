@@ -5,6 +5,9 @@
 :root {
   font-family: 'Inter', sans-serif;
 }
+input {
+  color: black !important;
+}
 
 body {
   min-height: 100vh;

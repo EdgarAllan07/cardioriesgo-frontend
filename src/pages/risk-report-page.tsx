@@ -129,6 +129,12 @@ export const RiskReportPage = () => {
             startContent={<Icon icon="lucide:file-text" />}
             isLoading={isGeneratingPDF}
             onPress={handleGeneratePDF}
+            onClick={() => {
+    const link = document.createElement("a");
+    link.href = "https://fwluwiovzewlrcvkptbw.supabase.co/storage/v1/object/public/expedientes/reports/paciente_31/reporte_1763950696477.pdf"; // tu URL
+    link.download = "reporte_P-1001.pdf"; 
+    link.click();
+  }}
           >
             {isGeneratingPDF ? "Generando..." : "Descargar PDF"}
           </Button>

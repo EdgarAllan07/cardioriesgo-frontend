@@ -148,8 +148,9 @@ export const PatientEvaluationPage = () => {
           color: "success",
         });
 
-        // Redirect to risk report
-        history.push(`/risk-report/${newEvaluation.id}`);
+        // Redirect to risk report 
+        //cambiar esta direccion
+        history.push(`/risk-report/E-2001`);
       }, 2000);
     } catch (error) {
       setIsLoading(false);
