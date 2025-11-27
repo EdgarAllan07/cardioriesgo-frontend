@@ -1,206 +1,201 @@
 import React from "react";
+import axios from "axios";
 
 export interface Patient {
-  id: string;
-  name: string;
-  age: number;
-  gender: "male" | "female" | "other";
-  lastEvaluation?: string;
-  riskLevel?: number;
+  id_paciente: number;
+  nombre_completo: string;
+  edad: number;
+  sexo: string;
   email?: string;
-  phone?: string;
-  birthDate?: string;
+  telefono?: string;
+  fecha_nacimiento?: string;
+  ultima_evaluacion?: string;
+  nivel_riesgo?: number;
 }
 
 export interface PatientEvaluation {
-  id: string;
-  patientId: string;
-  date: string;
-  age: number;
-  gender: "male" | "female" | "other";
-  bmi: number;
-  bloodPressureSystolic: number;
-  bloodPressureDiastolic: number;
-  cholesterolTotal: number;
-  cholesterolLDL: number;
-  cholesterolHDL: number;
-  bloodGlucose: number;
-  smoking: boolean;
-  alcohol: "none" | "moderate" | "heavy";
-  physicalActivity: "sedentary" | "moderate" | "active";
-  familyHistory: boolean;
-  symptoms: string[];
-  riskScore?: number;
-  diseases?: Array<{
-    name: string;
-    probability: number;
+  id_reporte: number;
+  id_paciente: number;
+  nombre_completo: string;
+  fecha_reporte: string;
+  edad: number;
+  sexo: string;
+  imc: number;
+  presion_sistolica: number;
+  presion_diastolica: number;
+  colesterol_total: number;
+  colesterol_ldl: number;
+  colesterol_hdl: number;
+  glucosa: number;
+  tabaquismo: boolean;
+  consumo_alcohol: string;
+  actividad_fisica: string;
+  antecedentes_familiares: boolean;
+  sintomas: string;
+  puntuacion_riesgo: number;
+  enfermedades?: Array<{
+    nombre: string;
+    probabilidad: number;
   }>;
+  url_pdf?: string;
+}
+
+export interface PatientReport {
+  id_reporte: number;
+  fecha_reporte: string;
+  puntuacion_riesgo: number;
+  url_pdf: string;
 }
 
 export function usePatients() {
-  // In a real app, this would come from an API
-  const [patients, setPatients] = React.useState<Patient[]>([
-    { 
-      id: "P-1001", 
-      name: "John Smith", 
-      age: 58, 
-      gender: "male", 
-      lastEvaluation: "2024-07-10", 
-      riskLevel: 85,
-      email: "john.smith@email.com",
-      phone: "+34 612 345 678",
-      birthDate: "1966-03-15"
-    },
-    { 
-      id: "P-1002", 
-      name: "Sarah Johnson", 
-      age: 45, 
-      gender: "female", 
-      lastEvaluation: "2024-07-08", 
-      riskLevel: 32,
-      email: "sarah.johnson@email.com",
-      phone: "+34 623 456 789",
-      birthDate: "1979-08-22"
-    },
-    { id: "P-1003", name: "Michael Brown", age: 62, gender: "male", lastEvaluation: "2024-07-05", riskLevel: 67 },
-    { id: "P-1004", name: "Emily Davis", age: 39, gender: "female", lastEvaluation: "2024-07-01", riskLevel: 18 },
-    { id: "P-1005", name: "Robert Wilson", age: 71, gender: "male", lastEvaluation: "2024-06-28", riskLevel: 74 },
-    { id: "P-1006", name: "Jennifer Taylor", age: 52, gender: "female", lastEvaluation: "2024-06-25", riskLevel: 45 },
-    { id: "P-1007", name: "David Martinez", age: 48, gender: "male", lastEvaluation: "2024-06-20", riskLevel: 38 },
-    { id: "P-1008", name: "Lisa Anderson", age: 65, gender: "female", lastEvaluation: "2024-06-15", riskLevel: 71 },
-    { id: "P-1009", name: "James Thomas", age: 54, gender: "male", lastEvaluation: "2024-06-10", riskLevel: 52 },
-    { id: "P-1010", name: "Patricia White", age: 67, gender: "female", lastEvaluation: "2024-06-05", riskLevel: 63 }
-  ]);
+  const [patients, setPatients] = React.useState<Patient[]>([]);
+  const [isLoadingPatients, setIsLoadingPatients] = React.useState(false);
+  const [patientsError, setpatientsError] = React.useState<string | null>(null);
 
-  const [evaluations, setEvaluations] = React.useState<PatientEvaluation[]>([
-    {
-      id: "E-2001",
-      patientId: "P-1001",
-      date: "2024-07-10",
-      age: 58,
-      gender: "male",
-      bmi: 28.5,
-      bloodPressureSystolic: 145,
-      bloodPressureDiastolic: 95,
-      cholesterolTotal: 240,
-      cholesterolLDL: 160,
-      cholesterolHDL: 42,
-      bloodGlucose: 110,
-      smoking: true,
-      alcohol: "moderate",
-      physicalActivity: "sedentary",
-      familyHistory: true,
-      symptoms: ["Dolor en el pecho", "Problemas para respirar"],
-      riskScore: 85,
-      diseases: [
-        { name: "Arterial Coronaria", probability: 0.78 },
-        { name: "Hipertensión Arterial", probability: 0.92 },
-        { name: "Diabetes Tipo 2", probability: 0.45 }
-      ]
-    },
-    {
-      id: "E-2002",
-      patientId: "P-1002",
-      date: "2024-07-08",
-      age: 45,
-      gender: "female",
-      bmi: 23.1,
-      bloodPressureSystolic: 118,
-      bloodPressureDiastolic: 75,
-      cholesterolTotal: 185,
-      cholesterolLDL: 110,
-      cholesterolHDL: 65,
-      bloodGlucose: 88,
-      smoking: false,
-      alcohol: "moderate",
-      physicalActivity: "active",
-      familyHistory: false,
-      symptoms: [],
-      riskScore: 32,
-      diseases: [
-        { name: "Coronary Artery Disease", probability: 0.12 },
-        { name: "Hypertension", probability: 0.25 },
-        { name: "Type 2 Diabetes", probability: 0.08 }
-      ]
+  // Pagination state
+  const [page, setPage] = React.useState(1);
+  const [limit] = React.useState(10);
+  const [totalPatients, setTotalPatients] = React.useState(0);
+
+  // Helper functions for authentication
+  const getUserId = () => {
+    if (typeof document === "undefined") return null;
+    const match = document.cookie.match(new RegExp("(^| )userId=([^;]+)"));
+    return match ? match[2] : null;
+  };
+
+  const getToken = () => {
+    if (typeof document === "undefined") return null;
+    const match = document.cookie.match(new RegExp("(^| )auth-token=([^;]+)"));
+    return match ? match[2] : null;
+  };
+
+  // Fetch patients from API
+  const fetchPatients = React.useCallback(async () => {
+    const userId = getUserId();
+    const token = getToken();
+
+    if (!userId || !token) {
+      setpatientsError("No se encontró la sesión del usuario");
+      return;
     }
-  ]);
 
-  const addPatient = (patient: Omit<Patient, "id">) => {
-    const newPatient = {
-      ...patient,
-      id: `P-${1011 + patients.length}`
-    };
-    setPatients([...patients, newPatient]);
-    return newPatient;
-  };
+    setIsLoadingPatients(true);
+    setpatientsError(null);
 
-  const addEvaluation = (evaluation: Omit<PatientEvaluation, "id" | "date" | "riskScore" | "diseases">) => {
-    // Simulate AI risk calculation
-    const riskScore = Math.floor(Math.random() * 100);
-    
-    // Generate mock disease probabilities based on risk score
-    const diseases = [
-      { 
-        name: "Coronary Artery Disease", 
-        probability: riskScore > 70 ? riskScore / 100 - 0.1 : riskScore / 100 - 0.3 
-      },
-      { 
-        name: "Hypertension", 
-        probability: evaluation.bloodPressureSystolic > 140 ? 0.8 : 0.3 
-      },
-      { 
-        name: "Type 2 Diabetes", 
-        probability: evaluation.bloodGlucose > 100 ? 0.6 : 0.2 
-      },
-      { 
-        name: "Stroke", 
-        probability: riskScore > 80 ? 0.7 : 0.15 
+    try {
+      const response = await axios.get(
+        `http://localhost:3000/api/pacientes/${userId}?page=${page}&limit=${limit}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Handle different response structures
+      if (Array.isArray(response.data)) {
+        // Fallback: Client-side pagination if backend returns all data
+        const start = (page - 1) * limit;
+        const end = start + limit;
+        setPatients(response.data.slice(start, end));
+        setTotalPatients(response.data.length);
+      } else if (response.data && typeof response.data === "object") {
+        // Expected paginated response: { data: Patient[], total: number }
+        setPatients(response.data.data || []);
+        setTotalPatients(response.data.total || 0);
       }
-    ];
-    
-    const newEvaluation = {
-      ...evaluation,
-      id: `E-${2000 + evaluations.length + 1}`,
-      date: new Date().toISOString().split('T')[0],
-      riskScore,
-      diseases
-    };
-    
-    setEvaluations([...evaluations, newEvaluation]);
-    
-    // Update patient's last evaluation and risk level
-    setPatients(patients.map(patient => 
-      patient.id === evaluation.patientId 
-        ? { 
-            ...patient, 
-            lastEvaluation: newEvaluation.date,
-            riskLevel: riskScore
-          } 
-        : patient
-    ));
-    
-    return newEvaluation;
+    } catch (error) {
+      console.error("Error fetching patients:", error);
+      setpatientsError("Error al cargar la lista de pacientes");
+      setPatients([]);
+    } finally {
+      setIsLoadingPatients(false);
+    }
+  }, [page, limit]);
+
+  // Fetch patients on mount and when page changes
+  React.useEffect(() => {
+    fetchPatients();
+  }, [fetchPatients]);
+
+  // Get a single patient by ID (from current loaded patients)
+  const getPatient = (id: string | number) => {
+    return patients.find((patient) => patient.id_paciente === Number(id));
   };
 
-  const getPatient = (id: string) => {
-    return patients.find(patient => patient.id === id);
+  // Fetch a specific evaluation/report by ID
+  const getEvaluation = async (
+    reportId: string | number
+  ): Promise<PatientEvaluation | null> => {
+    const token = getToken();
+
+    if (!token) {
+      console.error("No authentication token found");
+      return null;
+    }
+
+    try {
+      const response = await axios.get(
+        `http://localhost:3000/api/reportes/${reportId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching evaluation:", error);
+      return null;
+    }
   };
 
-  const getEvaluation = (id: string) => {
-    return evaluations.find(evaluation => evaluation.id === id);
+  // Fetch all evaluations for a specific patient
+  const getPatientEvaluations = async (
+    patientId: string | number
+  ): Promise<PatientReport[]> => {
+    const token = getToken();
+
+    if (!token) {
+      console.error("No authentication token found");
+      return [];
+    }
+
+    try {
+      const response = await axios.get(
+        `http://localhost:3000/api/reportes/paciente/${patientId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return response.data.data || [];
+    } catch (error) {
+      console.error("Error fetching patient evaluations:", error);
+      return [];
+    }
   };
 
-  const getPatientEvaluations = (patientId: string) => {
-    return evaluations.filter(evaluation => evaluation.patientId === patientId);
+  // Refresh patients list (useful after creating new evaluation)
+  const refreshPatients = () => {
+    fetchPatients();
   };
 
   return {
     patients,
-    evaluations,
-    addPatient,
-    addEvaluation,
+    isLoadingPatients,
+    patientsError,
+    page,
+    setPage,
+    limit,
+    totalPatients,
     getPatient,
     getEvaluation,
-    getPatientEvaluations
+    getPatientEvaluations,
+    refreshPatients,
   };
 }

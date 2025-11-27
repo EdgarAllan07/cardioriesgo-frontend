@@ -18,13 +18,14 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
-import { usePatients, PatientEvaluation } from "../hooks/use-patients";
+import { usePatients } from "../hooks/use-patients";
 import { addToast } from "@heroui/react";
+import axios from "axios";
 
 export const PatientEvaluationPage = () => {
   const history = useRouter();
   const location = useSearchParams();
-  const { patients, addPatient, addEvaluation, getPatient } = usePatients();
+  const { patients, getPatient } = usePatients();
 
   // Get patient ID from URL query params if it exists
   const patientIdFromUrl = location?.get("id") ?? null;
@@ -42,6 +43,19 @@ export const PatientEvaluationPage = () => {
   const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [birthDate, setBirthDate] = React.useState("");
+
+  // Helper functions for authentication
+  const getUserId = () => {
+    if (typeof document === "undefined") return null;
+    const match = document.cookie.match(new RegExp("(^| )userId=([^;]+)"));
+    return match ? match[2] : null;
+  };
+
+  const getToken = () => {
+    if (typeof document === "undefined") return null;
+    const match = document.cookie.match(new RegExp("(^| )auth-token=([^;]+)"));
+    return match ? match[2] : null;
+  };
 
   // Clinical data
   const [height, setHeight] = React.useState("");
@@ -68,13 +82,19 @@ export const PatientEvaluationPage = () => {
     if (patientIdFromUrl) {
       const patient = getPatient(patientIdFromUrl);
       if (patient) {
-        setPatientId(patient.id);
-        setPatientName(patient.name);
-        setAge(patient.age.toString());
-        setGender(patient.gender);
+        setPatientId(patient.id_paciente.toString());
+        setPatientName(patient.nombre_completo);
+        setAge(patient.edad.toString());
+        // Map sexo from Spanish to gender enum
+        const genderMap: Record<string, "male" | "female" | "other"> = {
+          Masculino: "male",
+          Femenino: "female",
+          Otro: "other",
+        };
+        setGender(genderMap[patient.sexo] || "other");
         setEmail(patient.email || "");
-        setPhone(patient.phone || "");
-        setBirthDate(patient.birthDate || "");
+        setPhone(patient.telefono || "");
+        setBirthDate(patient.fecha_nacimiento || "");
         setIsNewPatient(false);
       }
     }
@@ -99,61 +119,89 @@ export const PatientEvaluationPage = () => {
     setIsLoading(true);
 
     try {
-      let currentPatientId = patientId;
+      const userId = getUserId();
+      const token = getToken();
 
-      // If new patient, create patient first
-      if (isNewPatient) {
-        const newPatient = addPatient({
-          name: patientName,
-          age: parseInt(age),
-          gender: gender,
-          email: email,
-          phone: phone,
-          birthDate: birthDate,
-        });
-        currentPatientId = newPatient.id;
+      if (!userId || !token) {
+        throw new Error("No se encontró la sesión del usuario");
       }
 
-      // Create evaluation
+      // Calculate BMI
       const bmi = calculateBMI();
-      const evaluation: Omit<
-        PatientEvaluation,
-        "id" | "date" | "riskScore" | "diseases"
-      > = {
-        patientId: currentPatientId,
-        age: parseInt(age),
-        gender: gender,
-        bmi: parseFloat(bmi.toFixed(1)),
-        bloodPressureSystolic: parseInt(systolic),
-        bloodPressureDiastolic: parseInt(diastolic),
-        cholesterolTotal: parseInt(totalCholesterol),
-        cholesterolLDL: parseInt(ldl),
-        cholesterolHDL: parseInt(hdl),
-        bloodGlucose: parseInt(glucose),
-        smoking: smoking,
-        alcohol: alcohol,
-        physicalActivity: activity,
-        familyHistory: familyHistory,
-        symptoms: symptoms,
+
+      // Map gender to Spanish
+      const genderMap: Record<string, string> = {
+        male: "Masculino",
+        female: "Femenino",
+        other: "Otro",
       };
 
-      // Simulate API call and AI processing
-      setTimeout(() => {
-        const newEvaluation = addEvaluation(evaluation);
-        setIsLoading(false);
+      // Map alcohol consumption to Spanish
+      const alcoholMap: Record<string, string> = {
+        none: "Ninguno",
+        moderate: "Moderado",
+        heavy: "Alto",
+      };
 
-        addToast({
-          title: "Evaluación Completa",
-          description: "Datos del paciente han sido procesados exitosamente",
-          color: "success",
-        });
+      // Map physical activity to Spanish
+      const activityMap: Record<string, string> = {
+        sedentary: "Sedentario",
+        moderate: "Moderado",
+        active: "Activo",
+      };
 
-        // Redirect to risk report 
-        //cambiar esta direccion
-        history.push(`/risk-report/E-2001`);
-      }, 2000);
+      // Prepare payload for API
+      const payload = {
+        usuario_id: parseInt(userId),
+        nombre_completo: patientName,
+        edad: parseInt(age),
+        sexo: genderMap[gender],
+        fecha_nacimiento: birthDate,
+        telefono: phone,
+        email: email,
+        presion_sistolica: parseInt(systolic),
+        presion_diastolica: parseInt(diastolic),
+        colesterol_total: parseInt(totalCholesterol),
+        colesterol_ldl: parseInt(ldl),
+        colesterol_hdl: parseInt(hdl),
+        glucosa: parseInt(glucose),
+        peso_kg: parseFloat(weight),
+        altura_cm: parseFloat(height),
+        imc: parseFloat(bmi.toFixed(1)),
+        tabaquismo: smoking,
+        consumo_alcohol: alcoholMap[alcohol],
+        actividad_fisica: activityMap[activity],
+        antecedentes_familiares: familyHistory,
+        sintomas: symptoms.join(", "),
+      };
+
+      // Call API to generate report
+      const response = await axios.post(
+        "http://localhost:3000/api/reportes/generar",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      setIsLoading(false);
+
+      addToast({
+        title: "Evaluación Completa",
+        description: "Datos del paciente han sido procesados exitosamente",
+        color: "success",
+      });
+
+      // Redirect to risk report with the returned evaluation ID
+      const reportId =
+        response.data?.evaluacion_id || response.data?.id_reporte || "new";
+      history.push(`/risk-report/${reportId}`);
     } catch (error) {
       setIsLoading(false);
+      console.error("Error submitting evaluation:", error);
       addToast({
         title: "Error",
         description: "Hubo un error procesando la evaluación",
@@ -202,21 +250,34 @@ export const PatientEvaluationPage = () => {
                     label="Seleccionar Paciente"
                     placeholder="Elija un paciente"
                     value={patientId}
+                    color="primary"
                     onChange={(e) => {
                       const selectedId = e.target.value;
                       setPatientId(selectedId);
                       const patient = getPatient(selectedId);
                       if (patient) {
-                        setPatientName(patient.name);
-                        setAge(patient.age.toString());
-                        setGender(patient.gender);
+                        setPatientName(patient.nombre_completo);
+                        setAge(patient.edad.toString());
+                        // Map sexo from Spanish to gender enum
+                        const genderMap: Record<
+                          string,
+                          "male" | "female" | "other"
+                        > = {
+                          Masculino: "male",
+                          Femenino: "female",
+                          Otro: "other",
+                        };
+                        setGender(genderMap[patient.sexo] || "other");
                       }
                     }}
                     isRequired
+                    classNames={{
+                      value: "text-foreground",
+                    }}
                   >
                     {patients.map((patient) => (
-                      <SelectItem key={patient.id}>
-                        {patient.name} ({patient.id})
+                      <SelectItem key={patient.id_paciente}>
+                        {patient.nombre_completo} (ID: {patient.id_paciente})
                       </SelectItem>
                     ))}
                   </Select>

@@ -31,12 +31,12 @@ import { usePatients, type Patient } from "../hooks/use-patients";
 
 export const DashboardPage = () => {
   const history = useRouter();
-  const { patients, evaluations } = usePatients();
+  const { patients } = usePatients();
 
   const safeAvgRisk = (patients: Patient[]) => {
     if (!patients || patients.length === 0) return 0;
 
-    const sum = patients.reduce((acc, p) => acc + (p.riskLevel || 0), 0);
+    const sum = patients.reduce((acc, p) => acc + (p.nivel_riesgo || 0), 0);
 
     // 0/0 or Infinity check
     if (!isFinite(sum)) return 0;
@@ -46,13 +46,11 @@ export const DashboardPage = () => {
 
   // Get high-risk patients (risk level >= 70)
   const highRiskPatients = patients.filter(
-    (patient) => (patient.riskLevel || 0) >= 70
+    (patient) => (patient.nivel_riesgo || 0) >= 70
   );
 
-  // Get recent evaluations (last 5)
-  const recentEvaluations = [...evaluations]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
+  // Recent evaluations will be fetched separately when needed
+  // For now, we'll hide this section or fetch it from a dedicated endpoint
 
   // Monthly evaluation data for chart
   const monthlyData = [
@@ -65,17 +63,17 @@ export const DashboardPage = () => {
     { month: "Jul", evaluations: 72 },
   ];
 
-  const handleViewPatientHistory = (patientId: string) => {
+  const handleViewPatientHistory = (patientId: string | number) => {
     history.push(`/patient-history?id=${patientId}`);
   };
 
-  const handleNewEvaluation = (patientId: string) => {
+  const handleNewEvaluation = (patientId: string | number) => {
     history.push(`/patient-evaluation?id=${patientId}`);
   };
 
   return (
     <div className="space-y-6">
-   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div>
           <h1 className="text-2xl font-bold">Panel Principal</h1>
           <p className="text-default-500">Bienvenido de nuevo, Dr. Smith</p>
@@ -104,7 +102,10 @@ export const DashboardPage = () => {
         />
         <StatsCard
           title="Evaluaciones"
-          value={evaluations.length}
+          value={patients.reduce(
+            (acc, p) => acc + (p.ultima_evaluacion ? 1 : 0),
+            0
+          )}
           icon="lucide:clipboard-check"
           color="secondary"
           trend={{ value: 8, isUpward: true }}
@@ -189,25 +190,27 @@ export const DashboardPage = () => {
               <div className="space-y-4">
                 {highRiskPatients.slice(0, 3).map((patient) => (
                   <div
-                    key={patient.id}
+                    key={patient.id_paciente}
                     className="flex justify-between items-center p-2 rounded-medium bg-content2"
                   >
                     <div>
-                      <p className="font-medium">{patient.name}</p>
+                      <p className="font-medium">{patient.nombre_completo}</p>
                       <p className="text-tiny text-default-500">
-                        ID: {patient.id}
+                        ID: {patient.id_paciente}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <RiskLevelBadge
-                        riskLevel={patient.riskLevel || 0}
+                        riskLevel={patient.nivel_riesgo || 0}
                         showText={false}
                       />
                       <Button
                         size="sm"
                         variant="flat"
                         color="primary"
-                        onPress={() => handleViewPatientHistory(patient.id)}
+                        onPress={() =>
+                          handleViewPatientHistory(patient.id_paciente)
+                        }
                       >
                         Ver
                       </Button>
@@ -247,47 +250,42 @@ export const DashboardPage = () => {
             </Button>
           </CardHeader>
           <CardBody>
-            <Table removeWrapper aria-label="Recent evaluations table">
+            <Table removeWrapper aria-label="Recent patients table">
               <TableHeader>
                 <TableColumn>PACIENTE</TableColumn>
-                <TableColumn>FECHA</TableColumn>
+                <TableColumn>ÚLTIMA EVALUACIÓN</TableColumn>
                 <TableColumn>NIVEL DE RIESGO</TableColumn>
                 <TableColumn>ACCIÓN</TableColumn>
               </TableHeader>
-              <TableBody>
-                {recentEvaluations.map((evaluation) => {
-                  const patient = patients.find(
-                    (p) => p.id === evaluation.patientId
-                  );
-                  return (
-                    <TableRow key={evaluation.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{patient?.name}</p>
-                          <p className="text-tiny text-default-500">
-                            ID: {patient?.id}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>{evaluation.date}</TableCell>
-                      <TableCell>
-                        <RiskLevelBadge riskLevel={evaluation.riskScore || 0} />
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          color="primary"
-                          variant="flat"
-                          onPress={() =>
-                            history.push(`/risk-report/${evaluation.id}`)
-                          }
-                        >
-                          Ver Informe
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+              <TableBody emptyContent={"No hay pacientes recientes"}>
+                {patients.slice(0, 5).map((patient) => (
+                  <TableRow key={patient.id_paciente}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{patient.nombre_completo}</p>
+                        <p className="text-tiny text-default-500">
+                          ID: {patient.id_paciente}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>{patient.ultima_evaluacion || "N/A"}</TableCell>
+                    <TableCell>
+                      <RiskLevelBadge riskLevel={patient.nivel_riesgo || 0} />
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        color="primary"
+                        variant="flat"
+                        onPress={() =>
+                          handleViewPatientHistory(patient.id_paciente)
+                        }
+                      >
+                        Ver Historial
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </CardBody>
@@ -315,7 +313,7 @@ export const DashboardPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {patients.slice(0, 4).map((patient) => (
                 <PatientCard
-                  key={patient.id}
+                  key={patient.id_paciente}
                   patient={patient}
                   onViewHistory={handleViewPatientHistory}
                   onNewEvaluation={handleNewEvaluation}

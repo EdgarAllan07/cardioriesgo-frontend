@@ -7,21 +7,20 @@ import { Card, CardBody, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { RiskLevelBadge } from "./risk-level-badge";
 
-// TRADUCCIÓN: He "adivinado" la estructura de tu tipo Patient
-// basado en el código que me diste.
+// Updated to match API response structure
 interface Patient {
-  id: string;
-  name: string;
-  age: number;
-  gender: "male" | "female" | "other";
-  riskLevel?: number; // Risk level as a number (0-100)
-  lastEvaluation?: string;
+  id_paciente: number;
+  nombre_completo: string;
+  edad: number;
+  sexo: string;
+  nivel_riesgo?: number;
+  ultima_evaluacion?: string;
 }
 
 interface PatientCardProps {
   patient: Patient;
-  onViewHistory: (patientId: string) => void;
-  onNewEvaluation: (patientId: string) => void;
+  onViewHistory: (patientId: string | number) => void;
+  onNewEvaluation: (patientId: string | number) => void;
 }
 
 export const PatientCard = ({
@@ -42,54 +41,41 @@ export const PatientCard = ({
               <Icon icon="lucide:user" className="text-xl text-gray-500" />
             </div>
             <div>
-              <p className="font-medium">{patient.name}</p>
+              <p className="font-medium">{patient.nombre_completo}</p>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span>ID: {patient.id}</span>
+                <span>ID: {patient.id_paciente}</span>
                 <span>•</span>
-                <span>{patient.age} años</span>
+                <span>{patient.edad} años</span>
                 <span>•</span>
-                <span>
-                  {patient.gender === "male"
-                    ? "Masculino"
-                    : patient.gender === "female"
-                    ? "Femenino"
-                    : "Otro"}
-                </span>
+                <span>{patient.sexo}</span>
               </div>
             </div>
           </div>
-          {patient.riskLevel !== undefined && (
-            <RiskLevelBadge riskLevel={patient.riskLevel} />
+          {patient.nivel_riesgo !== undefined && (
+            <RiskLevelBadge riskLevel={patient.nivel_riesgo} />
           )}
         </div>
         <div className="mt-4 flex items-center justify-between">
           <div className="text-sm text-gray-500">
-            {patient.lastEvaluation ? (
-              <span>Última evaluación: {patient.lastEvaluation}</span>
+            {patient.ultima_evaluacion ? (
+              <span>Última evaluación: {patient.ultima_evaluacion}</span>
             ) : (
               <span>Sin evaluaciones previas</span>
             )}
           </div>
           <div className="flex gap-2">
-            {/* --- TRADUCCIÓN CLAVE DEL BOTÓN --- */}
             <Button
               size="sm"
-              // TRADUCCIÓN: Reemplazamos 'variant' y 'color' por clases de Tailwind.
-              // Estas clases son un ejemplo, ajústalas a tu gusto.
               className="bg-secondary-100 text-secondary-800 hover:bg-secondary-200"
-              // TRADUCCIÓN: ¡CRÍTICO! Se cambia 'onPress' por 'onClick'
-              onClick={() => onViewHistory(patient.id)}
+              onClick={() => onViewHistory(patient.id_paciente)}
             >
               Ver Historial
             </Button>
 
-            {/* --- TRADUCCIÓN CLAVE DEL BOTÓN --- */}
             <Button
               size="sm"
-              // TRADUCCIÓN: Clases para el botón primario (ejemplo)
               className="bg-primary-600 text-white hover:bg-primary-700"
-              // TRADUCCIÓN: ¡CRÍTICO! Se cambia 'onPress' por 'onClick'
-              onClick={() => onNewEvaluation(patient.id)}
+              onClick={() => onNewEvaluation(patient.id_paciente)}
             >
               Nueva Evaluación
             </Button>

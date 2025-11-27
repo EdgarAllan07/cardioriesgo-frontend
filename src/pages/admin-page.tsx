@@ -293,9 +293,7 @@ export const AdminPage = () => {
       // Map role to ID (Assuming 1=Admin, 2=Doctor, 3=Nurse, 4=Staff based on typical patterns, adjust if needed)
       const roleMap: Record<string, number> = {
         admin: 1,
-        doctor: 2,
-        nurse: 3,
-        staff: 4,
+        doctor: 2
       };
       const tipo_usuario_id = roleMap[newUser.role] || 2;
 
@@ -694,6 +692,8 @@ export const AdminPage = () => {
                   });
                 }}
                 isRequired
+             
+              color="primary"
               >
                 <SelectItem key="admin">Administrador</SelectItem>
                 <SelectItem key="doctor">Doctor</SelectItem>

@@ -51,6 +51,7 @@ import { heroui } from "@heroui/react";
             divider: {
               DEFAULT: "rgba(44, 62, 80, 0.15)"
             },
+            
             focus: {
               DEFAULT: "#1ABC9C"
             },

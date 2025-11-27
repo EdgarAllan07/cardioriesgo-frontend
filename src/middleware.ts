@@ -1,43 +1,53 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { getUserByToken } from "./lib/user";
 // 1. Define las rutas que quieres proteger
 // Estas son las rutas que antes tenías en <PrivateRoute>
 const protectedRoutes = [
-  '/dashboard',
-  '/patient-evaluation',
-  '/risk-report',
-  '/patient-history',
-  '/admin',
-  '/alerts',
-  '/user-settings',
-  '/appointments',
+  "/dashboard",
+  "/patient-evaluation",
+  "/risk-report",
+  "/patient-history",
+  "/admin",
+  "/alerts",
+  "/user-settings",
+  "/appointments",
 ];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // 2. Obtiene el token de autenticación (guardado en una cookie)
   // Lo llamaremos 'auth-token' como ejemplo
-  const token = request.cookies.get('auth-token');
-  const userId = request.cookies.get('userId');
+  const token = request.cookies.get("auth-token")?.value;
+  const userId = request.cookies.get("userId")?.value;
   const pathname = request.nextUrl.pathname;
-
+let user;
   // 3. Comprueba si la ruta actual es una de las protegidas
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+  const isProtectedRoute = protectedRoutes.some((route) =>
+    pathname.startsWith(route)
+  );
 
   // 4. LÓGICA DE REDIRECCIÓN (Reemplaza <PrivateRoute>)
   if (isProtectedRoute && !token) {
     // Si el usuario NO tiene token y quiere entrar a una ruta protegida,
     // redirígelo al login.
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // 5. LÓGICA DE REDIRECCIÓN (Reemplaza <Route path="/login">)
-  if (pathname === '/login' && token) {
+  if (pathname === "/login" && token) {
     // Si el usuario SÍ tiene token y va a la página de login,
     // redirígelo al dashboard.
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
+
+ if(token){
+   user = await getUserByToken(userId, token!);
+   if (user[0].tipo_usuario_id !== "Administrador" && pathname === "/admin") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+ }
   
+
   // 6. Si todo está bien, deja que el usuario continúe
   return NextResponse.next();
 }
@@ -54,7 +64,7 @@ export const config = {
      * - _next/image (Optimización de imágenes)
      * - favicon.ico (Icono)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };
 

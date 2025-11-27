@@ -28,7 +28,7 @@ interface User {
   nombre: string;
   apellido: string;
   correo: string;
-  tipo_usuario_id: string;
+  tipo_usuario_id: string | number;
   contrasena: string;
   foto_perfil?: string;
 }
@@ -96,6 +96,7 @@ export const MainLayout = ({ children, onLogout }: MainLayoutProps) => {
     fetchUser();
   }, [fetchUser]);
 
+  
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar maxWidth="2xl" className="border-b border-divider">
@@ -147,6 +148,7 @@ export const MainLayout = ({ children, onLogout }: MainLayoutProps) => {
             </HeroLink>
           </NavbarItem>
 
+         {user?.tipo_usuario_id === 'Administrador' && 
           <NavbarItem isActive={isActive("/admin")}>
             <HeroLink
               as={Link}
@@ -155,8 +157,8 @@ export const MainLayout = ({ children, onLogout }: MainLayoutProps) => {
             >
               Administración
             </HeroLink>
-          </NavbarItem>
-        </NavbarContent>
+          </NavbarItem> }
+        </NavbarContent> 
 
         <NavbarContent justify="end">
           <NavbarItem>

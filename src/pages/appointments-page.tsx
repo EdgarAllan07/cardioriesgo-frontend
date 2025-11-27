@@ -660,6 +660,7 @@ export const AppointmentsPage = () => {
                       setFormData({ ...formData, id_paciente: selectedKey });
                     }}
                     isRequired
+                    color="primary"
                   >
                     {patients.map((patient) => (
                       <SelectItem
