@@ -50,44 +50,43 @@ export const MainLayout = ({ children, onLogout }: MainLayoutProps) => {
     const match = document.cookie.match(new RegExp("(^| )userId=([^;]+)"));
     return match ? match[2] : null;
   };
-    const getToken = () => {
+  const getToken = () => {
     const match = document.cookie.match(new RegExp("(^| )auth-token=([^;]+)"));
     return match ? match[2] : null;
-   
   };
 
   const fetchUser = React.useCallback(async () => {
     const userId = getUserId();
-    const token = getToken()
-    if(userId){
+    const token = getToken();
+    if (userId) {
       try {
-      const response = await axios.get(
-        `http://localhost:3000/api/usuarios/${userId}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+        const response = await axios.get(
+          `http://localhost:3000/api/usuarios/${userId}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         const data = Array.isArray(response.data)
-        ? response.data[0]
-        : response.data;
-    if (data) {
-        setUser({
-          id_usuario: data.id_usuario || "",
-          nombre: data.nombre || "",
-          apellido: data.apellido || "",
-          correo: data.correo || "",
-          tipo_usuario_id: data.tipo_usuario_id || "",
-          contrasena: data.contrasena || "",
-          foto_perfil: data.foto_perfil || "",
-        });
-      }
+          ? response.data[0]
+          : response.data;
+        if (data) {
+          setUser({
+            id_usuario: data.id_usuario || "",
+            nombre: data.nombre || "",
+            apellido: data.apellido || "",
+            correo: data.correo || "",
+            tipo_usuario_id: data.tipo_usuario_id || "",
+            contrasena: data.contrasena || "",
+            foto_perfil: data.foto_perfil || "",
+          });
+        }
       } catch (error) {
         console.log(error);
       }
-    }else{
+    } else {
       console.log("No se encontro el usuario ", userId);
     }
   }, []);
@@ -96,7 +95,20 @@ export const MainLayout = ({ children, onLogout }: MainLayoutProps) => {
     fetchUser();
   }, [fetchUser]);
 
-  
+  // Listen for profile update events from user settings page
+  React.useEffect(() => {
+    const handleProfileUpdate = () => {
+      console.log("Profile updated event received, refreshing user data...");
+      fetchUser();
+    };
+
+    window.addEventListener("userProfileUpdated", handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener("userProfileUpdated", handleProfileUpdate);
+    };
+  }, [fetchUser]);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar maxWidth="2xl" className="border-b border-divider">
@@ -148,17 +160,18 @@ export const MainLayout = ({ children, onLogout }: MainLayoutProps) => {
             </HeroLink>
           </NavbarItem>
 
-         {user?.tipo_usuario_id === 'Administrador' && 
-          <NavbarItem isActive={isActive("/admin")}>
-            <HeroLink
-              as={Link}
-              href="/admin"
-              color={isActive("/admin") ? "primary" : "foreground"}
-            >
-              Administración
-            </HeroLink>
-          </NavbarItem> }
-        </NavbarContent> 
+          {user?.tipo_usuario_id === "Administrador" && (
+            <NavbarItem isActive={isActive("/admin")}>
+              <HeroLink
+                as={Link}
+                href="/admin"
+                color={isActive("/admin") ? "primary" : "foreground"}
+              >
+                Administración
+              </HeroLink>
+            </NavbarItem>
+          )}
+        </NavbarContent>
 
         <NavbarContent justify="end">
           <NavbarItem>

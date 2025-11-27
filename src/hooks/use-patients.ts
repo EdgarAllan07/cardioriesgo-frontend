@@ -38,6 +38,9 @@ export interface PatientEvaluation {
     probabilidad: number;
   }>;
   url_pdf?: string;
+  email?: string;
+  telefono?: string;
+  fecha_nacimiento?: string;
 }
 
 export interface PatientReport {

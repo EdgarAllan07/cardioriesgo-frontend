@@ -1,61 +1,105 @@
 "use client";
 import React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Card, CardBody, CardHeader, Input, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Pagination, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  Input,
+  Button,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Pagination,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Spinner,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import { RiskLevelBadge } from "../components/risk-level-badge";
 import { PatientCard } from "../components/patient-card";
-import { usePatients } from "../hooks/use-patients";
+import { usePatients, type PatientReport } from "../hooks/use-patients";
 
 export const PatientHistoryPage = () => {
   const history = useRouter();
-  const location =useSearchParams();
-  const { patients, evaluations, getPatient } = usePatients();
-  
+  const location = useSearchParams();
+  const { patients, getPatient, getPatientEvaluations, isLoadingPatients } =
+    usePatients();
+
   // Get patient ID from URL query params if it exists
   const patientIdFromUrl = location?.get("id") ?? null;
-  
+
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [selectedPatient, setSelectedPatient] = React.useState<string | null>(patientIdFromUrl);
+  const [selectedPatient, setSelectedPatient] = React.useState<
+    string | number | null
+  >(patientIdFromUrl);
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [sortDescriptor, setSortDescriptor] = React.useState({ column: "date", direction: "descending" });
+  const [sortDescriptor, setSortDescriptor] = React.useState({
+    column: "fecha_reporte",
+    direction: "descending",
+  });
+  const [patientEvaluations, setPatientEvaluations] = React.useState<
+    PatientReport[]
+  >([]);
+  const [isLoadingEvaluations, setIsLoadingEvaluations] = React.useState(false);
   const rowsPerPage = 10;
-  
+
   // Filter patients based on search query
   const filteredPatients = React.useMemo(() => {
-    return patients.filter(patient => 
-      patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.id.toLowerCase().includes(searchQuery.toLowerCase())
+    return patients.filter(
+      (patient) =>
+        patient.nombre_completo
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        patient.id_paciente.toString().includes(searchQuery)
     );
   }, [patients, searchQuery]);
-  
-  // Get evaluations for selected patient
-  const patientEvaluations = React.useMemo(() => {
-    if (!selectedPatient) return [];
-    
-    return evaluations
-      .filter(evaluation => evaluation.patientId === selectedPatient)
-      .sort((a, b) => {
-        const aValue = a[sortDescriptor.column as keyof typeof a];
-        const bValue = b[sortDescriptor.column as keyof typeof b];
-        
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          return sortDescriptor.direction === 'ascending'
+
+  // Fetch evaluations when selected patient changes
+  React.useEffect(() => {
+    const fetchEvaluations = async () => {
+      if (!selectedPatient) {
+        setPatientEvaluations([]);
+        return;
+      }
+
+      setIsLoadingEvaluations(true);
+      const evaluations = await getPatientEvaluations(selectedPatient);
+
+      // Sort evaluations
+      const sorted = evaluations.sort((a, b) => {
+        const aValue = a[sortDescriptor.column as keyof PatientReport];
+        const bValue = b[sortDescriptor.column as keyof PatientReport];
+
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          return sortDescriptor.direction === "ascending"
             ? aValue.localeCompare(bValue)
             : bValue.localeCompare(aValue);
         }
-        
-        if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return sortDescriptor.direction === 'ascending'
+
+        if (typeof aValue === "number" && typeof bValue === "number") {
+          return sortDescriptor.direction === "ascending"
             ? aValue - bValue
             : bValue - aValue;
         }
-        
+
         return 0;
       });
-  }, [evaluations, selectedPatient, sortDescriptor]);
-  
+
+      setPatientEvaluations(sorted);
+      setIsLoadingEvaluations(false);
+    };
+
+    fetchEvaluations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPatient, sortDescriptor]);
+
   // Pagination
   const pages = Math.ceil(filteredPatients.length / rowsPerPage);
   const paginatedPatients = React.useMemo(() => {
@@ -63,35 +107,44 @@ export const PatientHistoryPage = () => {
     const end = start + rowsPerPage;
     return filteredPatients.slice(start, end);
   }, [filteredPatients, currentPage]);
-  
-  const handleViewPatient = (patientId: string) => {
+
+  const handleViewPatient = (patientId: string | number) => {
     setSelectedPatient(patientId);
   };
-  
-  const handleNewEvaluation = (patientId: string) => {
+
+  const handleNewEvaluation = (patientId: string | number) => {
     history.push(`/patient-evaluation?id=${patientId}`);
   };
-  
-  const handleViewReport = (evaluationId: string) => {
+
+  const handleViewReport = (evaluationId: number) => {
     history.push(`/risk-report/${evaluationId}`);
   };
-  
+
   const handleSortChange = (column: string) => {
-    setSortDescriptor(prev => ({
+    setSortDescriptor((prev) => ({
       column,
-      direction: prev.column === column && prev.direction === 'ascending' ? 'descending' : 'ascending'
+      direction:
+        prev.column === column && prev.direction === "ascending"
+          ? "descending"
+          : "ascending",
     }));
   };
-  
+
+  const selectedPatientData = selectedPatient
+    ? getPatient(selectedPatient)
+    : null;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Historial de Pacientes</h1>
-        <p className="text-default-500">Ver y gestionar el historial de pacientes y evaluaciones</p>
+        <p className="text-default-500">
+          Ver y gestionar el historial de pacientes y evaluaciones
+        </p>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -100,8 +153,8 @@ export const PatientHistoryPage = () => {
           <Card>
             <CardHeader className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Pacientes</h2>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 color="primary"
                 variant="flat"
                 startContent={<Icon icon="lucide:plus" />}
@@ -116,53 +169,79 @@ export const PatientHistoryPage = () => {
                   placeholder="Buscar pacientes..."
                   value={searchQuery}
                   onValueChange={setSearchQuery}
-                  startContent={<Icon icon="lucide:search" className="text-default-400" />}
+                  startContent={
+                    <Icon icon="lucide:search" className="text-default-400" />
+                  }
                   isClearable
                 />
-                
-                <div className="space-y-2">
-                  {paginatedPatients.length > 0 ? (
-                    paginatedPatients.map(patient => (
-                      <div 
-                        key={patient.id}
-                        className={`p-3 rounded-medium cursor-pointer transition-colors ${
-                          selectedPatient === patient.id 
-                            ? 'bg-primary text-white' 
-                            : 'bg-content2 hover:bg-content3'
-                        }`}
-                        onClick={() => handleViewPatient(patient.id)}
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className={`font-medium ${selectedPatient === patient.id ? 'text-white' : ''}`}>
-                              {patient.name}
-                            </p>
-                            <p className={`text-tiny ${selectedPatient === patient.id ? 'text-white/80' : 'text-default-500'}`}>
-                              ID: {patient.id} | {patient.age} years | {patient.gender === "male" ? "Male" : patient.gender === "female" ? "Female" : "Other"}
-                            </p>
-                          </div>
-                          {patient.riskLevel && (
-                            <div className={`text-tiny font-medium px-2 py-1 rounded-full ${
-                              patient.riskLevel < 40 
-                                ? 'bg-success-100 text-success-600' 
-                                : patient.riskLevel < 70 
-                                  ? 'bg-warning-100 text-warning-600' 
-                                  : 'bg-danger-100 text-danger-600'
-                            }`}>
-                              {patient.riskLevel}%
+
+                {isLoadingPatients ? (
+                  <div className="py-8 text-center">
+                    <Spinner />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {paginatedPatients.length > 0 ? (
+                      paginatedPatients.map((patient) => (
+                        <div
+                          key={patient.id_paciente}
+                          className={`p-3 rounded-medium cursor-pointer transition-colors ${
+                            selectedPatient === patient.id_paciente
+                              ? "bg-primary text-white"
+                              : "bg-content2 hover:bg-content3"
+                          }`}
+                          onClick={() => handleViewPatient(patient.id_paciente)}
+                        >
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p
+                                className={`font-medium ${
+                                  selectedPatient === patient.id_paciente
+                                    ? "text-white"
+                                    : ""
+                                }`}
+                              >
+                                {patient.nombre_completo}
+                              </p>
+                              <p
+                                className={`text-tiny ${
+                                  selectedPatient === patient.id_paciente
+                                    ? "text-white/80"
+                                    : "text-default-500"
+                                }`}
+                              >
+                                ID: {patient.id_paciente} | {patient.edad} años
+                                | {patient.sexo}
+                              </p>
                             </div>
-                          )}
+                            {patient.nivel_riesgo && (
+                              <div
+                                className={`text-tiny font-medium px-2 py-1 rounded-full ${
+                                  patient.nivel_riesgo < 40
+                                    ? "bg-success-100 text-success-600"
+                                    : patient.nivel_riesgo < 70
+                                    ? "bg-warning-100 text-warning-600"
+                                    : "bg-danger-100 text-danger-600"
+                                }`}
+                              >
+                                {patient.nivel_riesgo}%
+                              </div>
+                            )}
+                          </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="py-8 text-center text-default-500">
+                        <Icon
+                          icon="lucide:user-x"
+                          className="text-default-300 text-2xl mb-2"
+                        />
+                        <p>No se encontraron pacientes</p>
                       </div>
-                    ))
-                  ) : (
-                    <div className="py-8 text-center text-default-500">
-                      <Icon icon="lucide:user-x" className="text-default-300 text-2xl mb-2" />
-                      <p>No se encontraron pacientes</p>
-                    </div>
-                  )}
-                </div>
-                
+                    )}
+                  </div>
+                )}
+
                 {filteredPatients.length > rowsPerPage && (
                   <div className="flex justify-center">
                     <Pagination
@@ -176,23 +255,23 @@ export const PatientHistoryPage = () => {
               </div>
             </CardBody>
           </Card>
-          
-          {selectedPatient && (
-            <motion.div 
+
+          {selectedPatient && selectedPatientData && (
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <PatientCard 
-                patient={getPatient(selectedPatient)!}
+              <PatientCard
+                patient={selectedPatientData}
                 onViewHistory={handleViewPatient}
                 onNewEvaluation={handleNewEvaluation}
               />
             </motion.div>
           )}
         </motion.div>
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
@@ -201,13 +280,12 @@ export const PatientHistoryPage = () => {
           <Card>
             <CardHeader className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">
-                {selectedPatient 
-                  ? `Historial de Evaluaciones: ${getPatient(selectedPatient)?.name}`
-                  : "Historial de Evaluaciones"
-                }
+                {selectedPatient
+                  ? `Historial de Evaluaciones: ${selectedPatientData?.nombre_completo}`
+                  : "Historial de Evaluaciones"}
               </h2>
               {selectedPatient && (
-                <Button 
+                <Button
                   color="primary"
                   size="sm"
                   onPress={() => handleNewEvaluation(selectedPatient)}
@@ -218,49 +296,45 @@ export const PatientHistoryPage = () => {
             </CardHeader>
             <CardBody>
               {selectedPatient ? (
-                patientEvaluations.length > 0 ? (
+                isLoadingEvaluations ? (
+                  <div className="py-12 text-center">
+                    <Spinner />
+                  </div>
+                ) : patientEvaluations.length > 0 ? (
                   <Table removeWrapper aria-label="Patient evaluations table">
                     <TableHeader>
-                      <TableColumn 
-                        className="cursor-pointer" 
-                        onClick={() => handleSortChange('date')}
+                      <TableColumn
+                        className="cursor-pointer"
+                        onClick={() => handleSortChange("fecha_reporte")}
                       >
                         <div className="flex items-center gap-1">
                           FECHA
-                          {sortDescriptor.column === 'date' && (
-                            <Icon 
-                              icon={sortDescriptor.direction === 'ascending' ? "lucide:arrow-up" : "lucide:arrow-down"} 
-                              className="text-tiny" 
+                          {sortDescriptor.column === "fecha_reporte" && (
+                            <Icon
+                              icon={
+                                sortDescriptor.direction === "ascending"
+                                  ? "lucide:arrow-up"
+                                  : "lucide:arrow-down"
+                              }
+                              className="text-tiny"
                             />
                           )}
                         </div>
                       </TableColumn>
-                      <TableColumn 
-                        className="cursor-pointer" 
-                        onClick={() => handleSortChange('age')}
-                      >
-                        <div className="flex items-center gap-1">
-                          EDAD
-                          {sortDescriptor.column === 'age' && (
-                            <Icon 
-                              icon={sortDescriptor.direction === 'ascending' ? "lucide:arrow-up" : "lucide:arrow-down"} 
-                              className="text-tiny" 
-                            />
-                          )}
-                        </div>
-                      </TableColumn>
-                      <TableColumn>IMC</TableColumn>
-                      <TableColumn>PA</TableColumn>
-                      <TableColumn 
-                        className="cursor-pointer" 
-                        onClick={() => handleSortChange('riskScore')}
+                      <TableColumn
+                        className="cursor-pointer"
+                        onClick={() => handleSortChange("puntuacion_riesgo")}
                       >
                         <div className="flex items-center gap-1">
                           RIESGO
-                          {sortDescriptor.column === 'riskScore' && (
-                            <Icon 
-                              icon={sortDescriptor.direction === 'ascending' ? "lucide:arrow-up" : "lucide:arrow-down"} 
-                              className="text-tiny" 
+                          {sortDescriptor.column === "puntuacion_riesgo" && (
+                            <Icon
+                              icon={
+                                sortDescriptor.direction === "ascending"
+                                  ? "lucide:arrow-up"
+                                  : "lucide:arrow-down"
+                              }
+                              className="text-tiny"
                             />
                           )}
                         </div>
@@ -268,48 +342,50 @@ export const PatientHistoryPage = () => {
                       <TableColumn>ACCIONES</TableColumn>
                     </TableHeader>
                     <TableBody>
-                      {patientEvaluations.map(evaluation => (
-                        <TableRow key={evaluation.id}>
-                          <TableCell>{evaluation.date}</TableCell>
-                          <TableCell>{evaluation.age}</TableCell>
-                          <TableCell>{evaluation.bmi}</TableCell>
-                          <TableCell>{evaluation.bloodPressureSystolic}/{evaluation.bloodPressureDiastolic}</TableCell>
+                      {patientEvaluations.map((evaluation) => (
+                        <TableRow key={evaluation.id_reporte}>
+                          <TableCell>{evaluation.fecha_reporte}</TableCell>
                           <TableCell>
-                            <RiskLevelBadge riskLevel={evaluation.riskScore || 0} showText={false} />
+                            <RiskLevelBadge
+                              riskLevel={evaluation.puntuacion_riesgo || 0}
+                              showText={true}
+                            />
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 color="primary"
                                 variant="flat"
-                                onPress={() => handleViewReport(evaluation.id)}
+                                onPress={() =>
+                                  handleViewReport(evaluation.id_reporte)
+                                }
                               >
                                 Ver Informe
                               </Button>
                               <Dropdown>
                                 <DropdownTrigger>
-                                  <Button 
-                                    size="sm" 
-                                    variant="flat" 
-                                    isIconOnly
-                                  >
+                                  <Button size="sm" variant="flat" isIconOnly>
                                     <Icon icon="lucide:more-vertical" />
                                   </Button>
                                 </DropdownTrigger>
-                                <DropdownMenu aria-label="Actions"
+                                <DropdownMenu
+                                  aria-label="Actions"
                                   onAction={(key) => {
-                                      if (key === "Descargar PDF") {
-                                        const link = document.createElement("a");
-                                        link.href = "https://fwluwiovzewlrcvkptbw.supabase.co/storage/v1/object/public/expedientes/reports/paciente_31/reporte_1763950696477.pdf";
-                                        link.download = "reporte_P-1001.pdf"; // nombre del archivo al guardar
-                                        link.click();
-                                      }
-                                    }}
+                                    if (key === "download") {
+                                      const link = document.createElement("a");
+                                      link.href = evaluation.url_pdf;
+                                      link.download = `reporte_${evaluation.id_reporte}.pdf`;
+                                      link.click();
+                                    }
+                                  }}
                                 >
-                                  <DropdownItem key="Descargar PDF">Descargar PDF</DropdownItem>
-                                  <DropdownItem key="Enviar al Paciente">Enviar al Paciente</DropdownItem>
-                                  <DropdownItem key="Imprimir Informe">Imprimir Informe</DropdownItem>
+                                  <DropdownItem key="download">
+                                    Revisar PDF
+                                  </DropdownItem>
+                                  <DropdownItem key="send">
+                                    Enviar al Paciente
+                                  </DropdownItem>
                                 </DropdownMenu>
                               </Dropdown>
                             </div>
@@ -320,10 +396,13 @@ export const PatientHistoryPage = () => {
                   </Table>
                 ) : (
                   <div className="py-12 text-center text-default-500">
-                    <Icon icon="lucide:file-x" className="text-default-300 text-3xl mb-2" />
+                    <Icon
+                      icon="lucide:file-x"
+                      className="text-default-300 text-3xl mb-2"
+                    />
                     <p>No se encontraron evaluaciones para este paciente</p>
-                    <Button 
-                      color="primary" 
+                    <Button
+                      color="primary"
                       className="mt-4"
                       onPress={() => handleNewEvaluation(selectedPatient)}
                     >
@@ -333,8 +412,13 @@ export const PatientHistoryPage = () => {
                 )
               ) : (
                 <div className="py-12 text-center text-default-500">
-                  <Icon icon="lucide:user-search" className="text-default-300 text-3xl mb-2" />
-                  <p>Seleccione un paciente para ver su historial de evaluaciones</p>
+                  <Icon
+                    icon="lucide:user-search"
+                    className="text-default-300 text-3xl mb-2"
+                  />
+                  <p>
+                    Seleccione un paciente para ver su historial de evaluaciones
+                  </p>
                 </div>
               )}
             </CardBody>

@@ -181,6 +181,9 @@ export const AlertsPage = () => {
         )
       );
 
+      // Dispatch event to notify navbar to refresh
+      window.dispatchEvent(new CustomEvent("alertsUpdated"));
+
       addToast({
         title: "Alerta marcada",
         description: "La alerta ha sido marcada como vista",
@@ -221,6 +224,9 @@ export const AlertsPage = () => {
       // Refresh alerts
       await fetchAlerts();
 
+      // Dispatch event to notify navbar to refresh
+      window.dispatchEvent(new CustomEvent("alertsUpdated"));
+
       addToast({
         title: "Alertas marcadas",
         description: "Todas las alertas han sido marcadas como vistas",
@@ -258,6 +264,9 @@ export const AlertsPage = () => {
       // Refresh alerts
       await fetchAlerts();
       setSelectedAlerts([]);
+
+      // Dispatch event to notify navbar to refresh
+      window.dispatchEvent(new CustomEvent("alertsUpdated"));
 
       addToast({
         title: "Alertas marcadas",

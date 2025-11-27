@@ -8,6 +8,9 @@
 input {
   color: black !important;
 }
+textarea {
+  color: black !important;
+}
 
 body {
   min-height: 100vh;

@@ -195,6 +195,9 @@ export const PatientEvaluationPage = () => {
         color: "success",
       });
 
+      // Dispatch event to notify alerts system to refresh
+      window.dispatchEvent(new CustomEvent("evaluationCreated"));
+
       // Redirect to risk report with the returned evaluation ID
       const reportId =
         response.data?.evaluacion_id || response.data?.id_reporte || "new";

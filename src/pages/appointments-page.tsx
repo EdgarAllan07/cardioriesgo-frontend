@@ -162,7 +162,17 @@ export const AppointmentsPage = () => {
       );
 
       console.log("Patients fetched:", response.data);
-      const data = Array.isArray(response.data) ? response.data : [];
+
+      // Handle both paginated and non-paginated responses
+      let data: Paciente[] = [];
+      if (Array.isArray(response.data)) {
+        data = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        // Paginated response: { data: [...], total: number }
+        data = response.data.data;
+      }
+
+      console.log("Patients array:", data);
       setPatients(data);
     } catch (error) {
       console.error("Error fetching patients:", error);
@@ -326,15 +336,19 @@ export const AppointmentsPage = () => {
 
       if (isEditing && selectedAppointment?.id_cita) {
         // Actualizar cita existente
+        const updatePayload = {
+          id_paciente: parseInt(formData.id_paciente),
+          fecha_cita: isoString,
+          motivo: formData.motivo,
+          estado: formData.estado,
+          observaciones: formData.observaciones,
+        };
+
+        console.log("Update payload:", updatePayload);
+
         await axios.patch(
           `http://localhost:3000/api/citas/${selectedAppointment.id_cita}`,
-          {
-            id_paciente: parseInt(formData.id_paciente),
-            fecha_cita: isoString,
-            motivo: formData.motivo,
-            estado: formData.estado,
-            observaciones: formData.observaciones,
-          },
+          updatePayload,
           {
             headers: {
               "Content-Type": "application/json",
@@ -350,23 +364,23 @@ export const AppointmentsPage = () => {
         });
       } else {
         // Crear nueva cita
-        await axios.post(
-          "http://localhost:3000/api/citas",
-          {
-            id_usuario: userId,
-            id_paciente: parseInt(formData.id_paciente),
-            fecha_cita: isoString,
-            motivo: formData.motivo,
-            estado: formData.estado,
-            observaciones: formData.observaciones,
+        const createPayload = {
+          id_usuario: parseInt(userId || "0"),
+          id_paciente: parseInt(formData.id_paciente),
+          fecha_cita: isoString,
+          motivo: formData.motivo,
+          estado: formData.estado,
+          observaciones: formData.observaciones,
+        };
+
+        console.log("Create payload:", createPayload);
+
+        await axios.post("http://localhost:3000/api/citas", createPayload, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        });
 
         addToast({
           title: "Cita creada",
@@ -380,9 +394,19 @@ export const AppointmentsPage = () => {
       onClose();
     } catch (error) {
       console.error("Error saving appointment:", error);
+
+      // Log detailed error information and extract error message
+      let errorMessage = "No se pudo guardar la cita";
+      if (axios.isAxiosError(error)) {
+        console.error("Response data:", error.response?.data);
+        console.error("Response status:", error.response?.status);
+        console.error("Response headers:", error.response?.headers);
+        errorMessage = error.response?.data?.message || errorMessage;
+      }
+
       addToast({
         title: "Error",
-        description: "No se pudo guardar la cita",
+        description: errorMessage,
         color: "danger",
       });
     } finally {
@@ -663,13 +687,10 @@ export const AppointmentsPage = () => {
                     color="primary"
                   >
                     {patients.map((patient) => (
-                      <SelectItem
-                        key={patient.id_paciente.toString()}
-                     
-                      >
+                      <SelectItem key={patient.id_paciente.toString()}>
                         {patient.nombre_completo}
                       </SelectItem>
-                    ))} 
+                    ))}
                   </Select>
 
                   <Input
@@ -717,6 +738,7 @@ export const AppointmentsPage = () => {
                           | "Cancelada",
                       })
                     }
+                    color="primary"
                   >
                     <SelectItem key="Programada">Programada</SelectItem>
                     <SelectItem key="Completada">Completada</SelectItem>
@@ -728,6 +750,7 @@ export const AppointmentsPage = () => {
                       label="Observaciones"
                       placeholder="Ingrese observaciones adicionales"
                       value={formData.observaciones}
+                      color="primary"
                       onValueChange={(value) =>
                         setFormData({ ...formData, observaciones: value })
                       }

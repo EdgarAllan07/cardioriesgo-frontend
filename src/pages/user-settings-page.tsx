@@ -124,7 +124,7 @@ export const UserSettingsPage = () => {
         color: "danger",
       });
     }
-  },[userId]);
+  }, [userId]);
 
   React.useEffect(() => {
     fetchUser();
@@ -135,7 +135,6 @@ export const UserSettingsPage = () => {
     if (selectedImage) {
       const objectUrl = URL.createObjectURL(selectedImage);
       setPreviewUrl(objectUrl);
-
     }
   }, [selectedImage]);
 
@@ -266,7 +265,10 @@ export const UserSettingsPage = () => {
         description: "Tu información ha sido actualizada correctamente",
         color: "success",
       });
-      fetchUser()
+      fetchUser();
+
+      // Dispatch custom event to notify navbar to refresh user data
+      window.dispatchEvent(new CustomEvent("userProfileUpdated"));
     } catch (error) {
       console.error("Error updating user:", error);
       addToast({
