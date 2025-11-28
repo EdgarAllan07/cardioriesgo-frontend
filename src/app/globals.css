@@ -11,7 +11,9 @@ input {
 textarea {
   color: black !important;
 }
-
+select {
+  color: black !important;
+}
 body {
   min-height: 100vh;
   margin: 0;

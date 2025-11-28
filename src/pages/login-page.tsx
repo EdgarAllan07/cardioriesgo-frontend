@@ -150,3 +150,5 @@ export const LoginPage = ({ onLogin }: LoginPageProps) => {
     </div>
   );
 };
+
+export default LoginPage;

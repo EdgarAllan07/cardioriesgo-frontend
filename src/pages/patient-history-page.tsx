@@ -19,6 +19,7 @@ import {
   DropdownMenu,
   DropdownItem,
   Spinner,
+  addToast,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
@@ -26,7 +27,7 @@ import { RiskLevelBadge } from "../components/risk-level-badge";
 import { PatientCard } from "../components/patient-card";
 import { usePatients, type PatientReport } from "../hooks/use-patients";
 
-export const PatientHistoryPage = () => {
+const PatientHistoryContent = () => {
   const history = useRouter();
   const location = useSearchParams();
   const { patients, getPatient, getPatientEvaluations, isLoadingPatients } =
@@ -50,15 +51,17 @@ export const PatientHistoryPage = () => {
   const [isLoadingEvaluations, setIsLoadingEvaluations] = React.useState(false);
   const rowsPerPage = 10;
 
-  // Filter patients based on search query
+  // Filter patients based on search query and sort by ID descending (newest first)
   const filteredPatients = React.useMemo(() => {
-    return patients.filter(
-      (patient) =>
-        patient.nombre_completo
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        patient.id_paciente.toString().includes(searchQuery)
-    );
+    return patients
+      .filter(
+        (patient) =>
+          patient.nombre_completo
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          patient.id_paciente.toString().includes(searchQuery)
+      )
+      .sort((a, b) => b.id_paciente - a.id_paciente);
   }, [patients, searchQuery]);
 
   // Fetch evaluations when selected patient changes
@@ -249,6 +252,13 @@ export const PatientHistoryPage = () => {
                       initialPage={1}
                       page={currentPage}
                       onChange={setCurrentPage}
+                      classNames={{
+                        wrapper:
+                          "gap-0 overflow-visible h-8 rounded-sm border border-divider",
+                        item: "w-8 h-8 text-small rounded-none  text-black",
+                        cursor:
+                          "bg-linear-to-b shadow-lg from-primary  dark:from-default-300 dark:to-default-100 text-white font-bold",
+                      }}
                     />
                   </div>
                 )}
@@ -378,6 +388,34 @@ export const PatientHistoryPage = () => {
                                       link.download = `reporte_${evaluation.id_reporte}.pdf`;
                                       link.click();
                                     }
+                                    if (key === "send") {
+                                      const patientEmail =
+                                        selectedPatientData?.email;
+
+                                      if (!patientEmail) {
+                                        // We can't use toast here easily without importing it or passing it down,
+                                        // but for now let's alert or just log since this is inside a map
+                                        // Ideally we should use the addToast hook if available in this scope
+                                        console.warn("No email for patient");
+                                        return;
+                                      }
+
+                                      const subject = encodeURIComponent(
+                                        `Reporte de Evaluación de Riesgo - ${selectedPatientData?.nombre_completo}`
+                                      );
+                                      const body = encodeURIComponent(
+                                        `Estimado(a) ${selectedPatientData?.nombre_completo},\n\nAdjunto encontrará el enlace a su reporte de evaluación de riesgo cardiovascular:\n\n${evaluation.url_pdf}\n\nAtentamente,\nSu Equipo Médico`
+                                      );
+
+                                      window.location.href = `mailto:${patientEmail}?subject=${subject}&body=${body}`;
+
+                                      addToast({
+                                        title: "Abriendo Cliente de Correo",
+                                        description:
+                                          "Se está abriendo su aplicación de correo predeterminada. Si no sucede nada, asegúrese de tener una instalada (ej. Outlook).",
+                                        color: "warning",
+                                      });
+                                    }
                                   }}
                                 >
                                   <DropdownItem key="download">
@@ -428,3 +466,13 @@ export const PatientHistoryPage = () => {
     </div>
   );
 };
+
+export const PatientHistoryPage = () => {
+  return (
+    <React.Suspense fallback={<div>Loading...</div>}>
+      <PatientHistoryContent />
+    </React.Suspense>
+  );
+};
+
+export default PatientHistoryPage;

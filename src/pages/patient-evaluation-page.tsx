@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
@@ -21,8 +21,9 @@ import { motion } from "framer-motion";
 import { usePatients } from "../hooks/use-patients";
 import { addToast } from "@heroui/react";
 import axios from "axios";
+import { API_URL } from "../config/api";
 
-export const PatientEvaluationPage = () => {
+const PatientEvaluationContent = () => {
   const history = useRouter();
   const location = useSearchParams();
   const { patients, getPatient } = usePatients();
@@ -177,7 +178,7 @@ export const PatientEvaluationPage = () => {
 
       // Call API to generate report
       const response = await axios.post(
-        "http://localhost:3000/api/reportes/generar",
+        `${API_URL}/api/reportes/generar`,
         payload,
         {
           headers: {
@@ -261,6 +262,21 @@ export const PatientEvaluationPage = () => {
                       if (patient) {
                         setPatientName(patient.nombre_completo);
                         setAge(patient.edad.toString());
+                        setEmail(patient.email || "");
+                        setPhone(patient.telefono || "");
+
+                        // Format date to YYYY-MM-DD for input type="date"
+                        if (patient.fecha_nacimiento) {
+                          const date = new Date(patient.fecha_nacimiento);
+                          if (!isNaN(date.getTime())) {
+                            setBirthDate(date.toISOString().split("T")[0]);
+                          } else {
+                            setBirthDate("");
+                          }
+                        } else {
+                          setBirthDate("");
+                        }
+
                         // Map sexo from Spanish to gender enum
                         const genderMap: Record<
                           string,
@@ -597,3 +613,13 @@ export const PatientEvaluationPage = () => {
     </div>
   );
 };
+
+export const PatientEvaluationPage = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PatientEvaluationContent />
+    </Suspense>
+  );
+};
+
+export default PatientEvaluationPage;

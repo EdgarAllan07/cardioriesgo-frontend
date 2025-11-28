@@ -25,13 +25,15 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { StatsCard } from "../components/stats-card";
-import { PatientCard } from "../components/patient-card";
 import { RiskLevelBadge } from "../components/risk-level-badge";
 import { usePatients, type Patient } from "../hooks/use-patients";
 
 export const DashboardPage = () => {
   const history = useRouter();
-  const { patients } = usePatients();
+  const { patients, getPatientEvaluations } = usePatients();
+  const [monthlyData, setMonthlyData] = React.useState<
+    { month: string; evaluations: number }[]
+  >([]);
 
   const safeAvgRisk = (patients: Patient[]) => {
     if (!patients || patients.length === 0) return 0;
@@ -44,31 +46,106 @@ export const DashboardPage = () => {
     return Math.round(sum / patients.length);
   };
 
-  // Get high-risk patients (risk level >= 70)
-  const highRiskPatients = patients.filter(
-    (patient) => (patient.nivel_riesgo || 0) >= 70
-  );
+  // Get high-risk patients (risk level >= 70) and sort by risk descending
+  const highRiskPatients = patients
+    .filter((patient) => (patient.nivel_riesgo || 0) >= 70)
+    .sort((a, b) => (b.nivel_riesgo || 0) - (a.nivel_riesgo || 0));
 
-  // Recent evaluations will be fetched separately when needed
-  // For now, we'll hide this section or fetch it from a dedicated endpoint
+  // Get recent patients sorted by last evaluation date
+  const recentPatients = [...patients].sort((a, b) => {
+    if (!a.ultima_evaluacion) return 1;
+    if (!b.ultima_evaluacion) return -1;
+    return (
+      new Date(b.ultima_evaluacion).getTime() -
+      new Date(a.ultima_evaluacion).getTime()
+    );
+  });
 
-  // Monthly evaluation data for chart
-  const monthlyData = [
-    { month: "Jan", evaluations: 45 },
-    { month: "Feb", evaluations: 52 },
-    { month: "Mar", evaluations: 48 },
-    { month: "Apr", evaluations: 61 },
-    { month: "May", evaluations: 55 },
-    { month: "Jun", evaluations: 67 },
-    { month: "Jul", evaluations: 72 },
-  ];
+  // Fetch and process monthly evaluation data
+  React.useEffect(() => {
+    const fetchMonthlyData = async () => {
+      try {
+        // Fetch evaluations for all patients
+        const allEvaluationsPromises = patients.map((patient) =>
+          getPatientEvaluations(patient.id_paciente)
+        );
+
+        const allEvaluationsArrays = await Promise.all(allEvaluationsPromises);
+        const allEvaluations = allEvaluationsArrays.flat();
+
+        // Generate last 12 months
+        const months: {
+          month: string;
+          monthKey: string;
+          evaluations: number;
+        }[] = [];
+        const now = new Date();
+
+        for (let i = 11; i >= 0; i--) {
+          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const monthName = date.toLocaleDateString("es-ES", {
+            month: "short",
+          });
+          const monthKey = `${date.getFullYear()}-${String(
+            date.getMonth() + 1
+          ).padStart(2, "0")}`;
+
+          months.push({
+            month: monthName.charAt(0).toUpperCase() + monthName.slice(1),
+            monthKey,
+            evaluations: 0,
+          });
+        }
+
+        // Count evaluations per month
+        allEvaluations.forEach((evaluation) => {
+          if (evaluation.fecha_reporte) {
+            const evalDate = new Date(evaluation.fecha_reporte);
+            const evalMonthKey = `${evalDate.getFullYear()}-${String(
+              evalDate.getMonth() + 1
+            ).padStart(2, "0")}`;
+
+            const monthData = months.find((m) => m.monthKey === evalMonthKey);
+            if (monthData) {
+              monthData.evaluations++;
+            }
+          }
+        });
+
+        // Remove monthKey before setting state (only keep month and evaluations)
+        setMonthlyData(
+          months.map(({ month, evaluations }) => ({ month, evaluations }))
+        );
+      } catch (error) {
+        console.error("Error fetching monthly data:", error);
+        // Set empty data on error
+        setMonthlyData([]);
+      }
+    };
+
+    if (patients.length > 0) {
+      fetchMonthlyData();
+    } else {
+      // If no patients, show empty chart for last 12 months
+      const months: { month: string; evaluations: number }[] = [];
+      const now = new Date();
+
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthName = date.toLocaleDateString("es-ES", { month: "short" });
+
+        months.push({
+          month: monthName.charAt(0).toUpperCase() + monthName.slice(1),
+          evaluations: 0,
+        });
+      }
+
+      setMonthlyData(months);
+    }
+  }, [patients, getPatientEvaluations]);
 
   const handleViewPatientHistory = (patientId: string | number) => {
     history.push(`/patient-history?id=${patientId}`);
-  };
-
-  const handleNewEvaluation = (patientId: string | number) => {
-    history.push(`/patient-evaluation?id=${patientId}`);
   };
 
   return (
@@ -258,7 +335,7 @@ export const DashboardPage = () => {
                 <TableColumn>ACCIÓN</TableColumn>
               </TableHeader>
               <TableBody emptyContent={"No hay pacientes recientes"}>
-                {patients.slice(0, 5).map((patient) => (
+                {recentPatients.slice(0, 5).map((patient) => (
                   <TableRow key={patient.id_paciente}>
                     <TableCell>
                       <div>
@@ -268,9 +345,14 @@ export const DashboardPage = () => {
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell>{patient.ultima_evaluacion || "N/A"}</TableCell>
                     <TableCell>
-                      <RiskLevelBadge riskLevel={patient.nivel_riesgo || 0} />
+                      {patient.ultima_evaluacion || "Sin evaluación"}
+                    </TableCell>
+                    <TableCell>
+                      <RiskLevelBadge
+                        riskLevel={patient.nivel_riesgo || 0}
+                        showText={true}
+                      />
                     </TableCell>
                     <TableCell>
                       <Button
@@ -291,38 +373,8 @@ export const DashboardPage = () => {
           </CardBody>
         </Card>
       </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
-      >
-        <Card>
-          <CardHeader className="flex justify-between">
-            <h2 className="text-lg font-semibold">Pacientes Recientes</h2>
-            <Button
-              size="sm"
-              variant="flat"
-              color="secondary"
-              onPress={() => history.push("/patient-history")}
-            >
-              Ver Todos los Pacientes
-            </Button>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {patients.slice(0, 4).map((patient) => (
-                <PatientCard
-                  key={patient.id_paciente}
-                  patient={patient}
-                  onViewHistory={handleViewPatientHistory}
-                  onNewEvaluation={handleNewEvaluation}
-                />
-              ))}
-            </div>
-          </CardBody>
-        </Card>
-      </motion.div>
     </div>
   );
 };
+
+export default DashboardPage;

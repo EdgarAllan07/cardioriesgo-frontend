@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get("auth-token")?.value;
   const userId = request.cookies.get("userId")?.value;
   const pathname = request.nextUrl.pathname;
-let user;
+  let user;
   // 3. Comprueba si la ruta actual es una de las protegidas
   const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)
@@ -40,13 +40,22 @@ let user;
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
- if(token){
-   user = await getUserByToken(userId, token!);
-   if (user[0].tipo_usuario_id !== "Administrador" && pathname === "/admin") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  if (token && userId) {
+    try {
+      user = await getUserByToken(userId, token!);
+      if (
+        user &&
+        user[0] &&
+        user[0].tipo_usuario_id !== "Administrador" &&
+        pathname === "/admin"
+      ) {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+      }
+    } catch (error) {
+      console.error("Error fetching user in middleware:", error);
+      // Optionally clear cookies or redirect to login if token is invalid
+    }
   }
- }
-  
 
   // 6. Si todo está bien, deja que el usuario continúe
   return NextResponse.next();

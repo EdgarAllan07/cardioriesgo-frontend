@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { LoginPage } from "@/pages/login-page";
 import axios from "axios";
+import { API_URL } from "../../config/api";
 
 export default function Login() {
   const router = useRouter();
@@ -12,11 +13,11 @@ export default function Login() {
       // TODO: Replace with your actual API endpoint
       // If your backend is on a different port (e.g., 5000), use the full URL: http://localhost:5000/api/login
       const loginPayload = {
-        correo:email,
-        contrasena:password,
+        correo: email,
+        contrasena: password,
       };
       const response = await axios.post(
-        "http://localhost:3000/api/auth/login",
+        `${API_URL}/api/auth/login`,
         loginPayload,
         {
           headers: {

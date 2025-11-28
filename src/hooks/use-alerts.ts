@@ -1,5 +1,6 @@
 import React from "react";
 import axios from "axios";
+import { API_URL } from "../config/api";
 
 export interface Alert {
   id_alerta: number;
@@ -41,14 +42,11 @@ export function useAlerts() {
     setIsLoading(true);
 
     try {
-      const response = await axios.get(
-        `http://localhost:3000/api/alertas/${userId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axios.get(`${API_URL}/api/alertas/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       // Handle both array and paginated response
       const data = Array.isArray(response.data)
@@ -82,8 +80,21 @@ export function useAlerts() {
   // Listen for new evaluation events to refresh alerts
   React.useEffect(() => {
     const handleNewEvaluation = () => {
-      console.log("New evaluation detected, refreshing alerts...");
+      console.log("New evaluation detected, refreshing alerts with retry...");
+      // Immediate fetch
       fetchAlerts();
+
+      // Retry after 2 seconds
+      setTimeout(() => {
+        console.log("Retrying alert fetch (2s)...");
+        fetchAlerts();
+      }, 2000);
+
+      // Retry after 5 seconds
+      setTimeout(() => {
+        console.log("Retrying alert fetch (5s)...");
+        fetchAlerts();
+      }, 5000);
     };
 
     window.addEventListener("evaluationCreated", handleNewEvaluation);
@@ -107,8 +118,10 @@ export function useAlerts() {
     };
   }, [fetchAlerts]);
 
-  // Count only "nuevo" (unread) alerts
-  const alertsCount = alerts.filter((alert) => alert.estado === "nuevo").length;
+  // Count only "nuevo" (unread) alerts (case insensitive)
+  const alertsCount = alerts.filter(
+    (alert) => alert.estado?.toLowerCase() === "nuevo"
+  ).length;
 
   const markAsViewed = async (id: number) => {
     const token = getToken();
@@ -117,7 +130,7 @@ export function useAlerts() {
 
     try {
       await axios.patch(
-        `http://localhost:3000/api/alertas/${id}`,
+        `${API_URL}/api/alertas/${id}`,
         { estado: "Visto" },
         {
           headers: {
@@ -146,12 +159,14 @@ export function useAlerts() {
 
     try {
       // Mark all unread alerts as read
-      const unreadAlerts = alerts.filter((alert) => alert.estado === "nuevo");
+      const unreadAlerts = alerts.filter(
+        (alert) => alert.estado?.toLowerCase() === "nuevo"
+      );
 
       await Promise.all(
         unreadAlerts.map((alert) =>
           axios.patch(
-            `http://localhost:3000/api/alertas/${alert.id_alerta}`,
+            `${API_URL}/api/alertas/${alert.id_alerta}`,
             { estado: "Visto" },
             {
               headers: {

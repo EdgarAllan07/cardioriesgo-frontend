@@ -5,7 +5,6 @@ import {
   Card,
   CardBody,
   CardHeader,
-  CardFooter,
   Input,
   Button,
   Divider,
@@ -16,7 +15,9 @@ import {
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import { addToast } from "@heroui/react";
+
 import axios from "axios";
+import { API_URL } from "../config/api";
 
 interface UserData {
   id_usuario: string;
@@ -90,15 +91,12 @@ export const UserSettingsPage = () => {
         return;
       }
 
-      const response = await axios.get(
-        `http://localhost:3000/api/usuarios/${userId}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axios.get(`${API_URL}/api/usuarios/${userId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
       console.log("User data fetched:", response.data);
 
       const data = Array.isArray(response.data)
@@ -216,7 +214,7 @@ export const UserSettingsPage = () => {
         }
 
         response = await axios.patch(
-          `http://localhost:3000/api/usuarios/${userId}`,
+          `${API_URL}/api/usuarios/${userId}`,
           formData,
           {
             headers: {
@@ -236,7 +234,7 @@ export const UserSettingsPage = () => {
         }
 
         response = await axios.patch(
-          `http://localhost:3000/api/usuarios/${userId}`,
+          `${API_URL}/api/usuarios/${userId}`,
           payload,
           {
             headers: {
@@ -507,3 +505,5 @@ export const UserSettingsPage = () => {
     </div>
   );
 };
+
+export default UserSettingsPage;

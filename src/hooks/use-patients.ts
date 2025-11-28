@@ -1,5 +1,6 @@
 import React from "react";
 import axios from "axios";
+import { API_URL } from "../config/api";
 
 export interface Patient {
   id_paciente: number;
@@ -50,6 +51,19 @@ export interface PatientReport {
   url_pdf: string;
 }
 
+// Helper functions for authentication (moved outside to be stable)
+const getUserId = () => {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp("(^| )userId=([^;]+)"));
+  return match ? match[2] : null;
+};
+
+const getToken = () => {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp("(^| )auth-token=([^;]+)"));
+  return match ? match[2] : null;
+};
+
 export function usePatients() {
   const [patients, setPatients] = React.useState<Patient[]>([]);
   const [isLoadingPatients, setIsLoadingPatients] = React.useState(false);
@@ -59,19 +73,6 @@ export function usePatients() {
   const [page, setPage] = React.useState(1);
   const [limit] = React.useState(10);
   const [totalPatients, setTotalPatients] = React.useState(0);
-
-  // Helper functions for authentication
-  const getUserId = () => {
-    if (typeof document === "undefined") return null;
-    const match = document.cookie.match(new RegExp("(^| )userId=([^;]+)"));
-    return match ? match[2] : null;
-  };
-
-  const getToken = () => {
-    if (typeof document === "undefined") return null;
-    const match = document.cookie.match(new RegExp("(^| )auth-token=([^;]+)"));
-    return match ? match[2] : null;
-  };
 
   // Fetch patients from API
   const fetchPatients = React.useCallback(async () => {
@@ -88,7 +89,7 @@ export function usePatients() {
 
     try {
       const response = await axios.get(
-        `http://localhost:3000/api/pacientes/${userId}?page=${page}&limit=${limit}`,
+        `${API_URL}/api/pacientes/${userId}?page=${page}&limit=${limit}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -123,70 +124,75 @@ export function usePatients() {
   }, [fetchPatients]);
 
   // Get a single patient by ID (from current loaded patients)
-  const getPatient = (id: string | number) => {
-    return patients.find((patient) => patient.id_paciente === Number(id));
-  };
+  const getPatient = React.useCallback(
+    (id: string | number) => {
+      return patients.find((patient) => patient.id_paciente === Number(id));
+    },
+    [patients]
+  );
 
   // Fetch a specific evaluation/report by ID
-  const getEvaluation = async (
-    reportId: string | number
-  ): Promise<PatientEvaluation | null> => {
-    const token = getToken();
+  const getEvaluation = React.useCallback(
+    async (reportId: string | number): Promise<PatientEvaluation | null> => {
+      const token = getToken();
 
-    if (!token) {
-      console.error("No authentication token found");
-      return null;
-    }
+      if (!token) {
+        console.error("No authentication token found");
+        return null;
+      }
 
-    try {
-      const response = await axios.get(
-        `http://localhost:3000/api/reportes/${reportId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      try {
+        const response = await axios.get(
+          `${API_URL}/api/reportes/${reportId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching evaluation:", error);
-      return null;
-    }
-  };
+        return response.data;
+      } catch (error) {
+        console.error("Error fetching evaluation:", error);
+        return null;
+      }
+    },
+    []
+  );
 
   // Fetch all evaluations for a specific patient
-  const getPatientEvaluations = async (
-    patientId: string | number
-  ): Promise<PatientReport[]> => {
-    const token = getToken();
+  const getPatientEvaluations = React.useCallback(
+    async (patientId: string | number): Promise<PatientReport[]> => {
+      const token = getToken();
 
-    if (!token) {
-      console.error("No authentication token found");
-      return [];
-    }
+      if (!token) {
+        console.error("No authentication token found");
+        return [];
+      }
 
-    try {
-      const response = await axios.get(
-        `http://localhost:3000/api/reportes/paciente/${patientId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      try {
+        const response = await axios.get(
+          `${API_URL}/api/reportes/paciente/${patientId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-      return response.data.data || [];
-    } catch (error) {
-      console.error("Error fetching patient evaluations:", error);
-      return [];
-    }
-  };
+        return response.data.data || [];
+      } catch (error) {
+        console.error("Error fetching patient evaluations:", error);
+        return [];
+      }
+    },
+    []
+  );
 
   // Refresh patients list (useful after creating new evaluation)
-  const refreshPatients = () => {
+  const refreshPatients = React.useCallback(() => {
     fetchPatients();
-  };
+  }, [fetchPatients]);
 
   return {
     patients,

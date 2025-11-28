@@ -24,7 +24,9 @@ import {
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import { addToast } from "@heroui/react";
+
 import axios from "axios";
+import { API_URL } from "../config/api";
 
 interface User {
   id?: string | number;
@@ -70,7 +72,6 @@ export const AdminPage = () => {
   const getToken = () => {
     const match = document.cookie.match(new RegExp("(^| )auth-token=([^;]+)"));
     return match ? match[2] : null;
-   
   };
 
   // Fetch users
@@ -79,7 +80,7 @@ export const AdminPage = () => {
     try {
       const token = getToken();
       const response = await axios.get(
-        `http://localhost:3000/api/usuarios?page=${page}&limit=${limit}`,
+        `${API_URL}/api/usuarios?page=${page}&limit=${limit}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -117,7 +118,7 @@ export const AdminPage = () => {
     try {
       const token = getToken();
       const response = await axios.get(
-        `http://localhost:3000/api/system-logs?page=${logPage}&limit=${logLimit}`,
+        `${API_URL}/api/system-logs?page=${logPage}&limit=${logLimit}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -231,7 +232,7 @@ export const AdminPage = () => {
     try {
       const token = getToken();
       await axios.patch(
-        `http://localhost:3000/api/usuarios/estado/${userId}`,
+        `${API_URL}/api/usuarios/estado/${userId}`,
         {
           estado: newStatus ? 1 : 0,
         },
@@ -293,7 +294,7 @@ export const AdminPage = () => {
       // Map role to ID (Assuming 1=Admin, 2=Doctor, 3=Nurse, 4=Staff based on typical patterns, adjust if needed)
       const roleMap: Record<string, number> = {
         admin: 1,
-        doctor: 2
+        doctor: 2,
       };
       const tipo_usuario_id = roleMap[newUser.role] || 2;
 
@@ -307,7 +308,7 @@ export const AdminPage = () => {
       };
 
       const token = getToken();
-      await axios.post("http://localhost:3000/api/usuarios", payload, {
+      await axios.post(`${API_URL}/api/usuarios`, payload, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -360,7 +361,7 @@ export const AdminPage = () => {
     try {
       const token = getToken();
       await axios.patch(
-        `http://localhost:3000/api/usuarios/contrasena/${selectedUser.id}`,
+        `${API_URL}/api/usuarios/contrasena/${selectedUser.id}`,
         {
           contrasena_hash: passwordForm.newPassword,
         },
@@ -467,12 +468,13 @@ export const AdminPage = () => {
                     usersPages > 0 ? (
                       <div className="flex w-full justify-center ">
                         <Pagination
-                                         classNames={{
-        wrapper: "gap-0 overflow-visible h-8 rounded-sm border border-divider",
-        item: "w-8 h-8 text-small rounded-none  text-black",
-        cursor:
-          "bg-linear-to-b shadow-lg from-primary  dark:from-default-300 dark:to-default-100 text-white font-bold",
-      }}
+                          classNames={{
+                            wrapper:
+                              "gap-0 overflow-visible h-8 rounded-sm border border-divider",
+                            item: "w-8 h-8 text-small rounded-none  text-black",
+                            cursor:
+                              "bg-linear-to-b shadow-lg from-primary  dark:from-default-300 dark:to-default-100 text-white font-bold",
+                          }}
                           isCompact
                           showControls
                           showShadow
@@ -589,12 +591,13 @@ export const AdminPage = () => {
                     logsPages > 0 ? (
                       <div className="flex w-full justify-center gap-4">
                         <Pagination
-                       classNames={{
-        wrapper: "gap-0 overflow-visible h-8 rounded-sm border border-divider",
-        item: "w-8 h-8 text-small rounded-none  text-black",
-        cursor:
-          "bg-linear-to-b shadow-lg from-primary  dark:from-default-300 dark:to-default-100 text-white font-bold",
-      }}
+                          classNames={{
+                            wrapper:
+                              "gap-0 overflow-visible h-8 rounded-sm border border-divider",
+                            item: "w-8 h-8 text-small rounded-none  text-black",
+                            cursor:
+                              "bg-linear-to-b shadow-lg from-primary  dark:from-default-300 dark:to-default-100 text-white font-bold",
+                          }}
                           isCompact
                           showControls
                           showShadow
@@ -669,6 +672,7 @@ export const AdminPage = () => {
                 onValueChange={(value) =>
                   setNewUser({ ...newUser, name: value })
                 }
+                color="primary"
                 isRequired
               />
               <Input
@@ -679,6 +683,7 @@ export const AdminPage = () => {
                 onValueChange={(value) =>
                   setNewUser({ ...newUser, email: value })
                 }
+                color="primary"
                 isRequired
               />
               <Select
@@ -692,8 +697,7 @@ export const AdminPage = () => {
                   });
                 }}
                 isRequired
-             
-              color="primary"
+                color="primary"
               >
                 <SelectItem key="admin">Administrador</SelectItem>
                 <SelectItem key="doctor">Doctor</SelectItem>
@@ -706,6 +710,7 @@ export const AdminPage = () => {
                 onValueChange={(value) =>
                   setNewUser({ ...newUser, password: value })
                 }
+                color="primary"
                 isRequired
               />
               <Input
@@ -717,6 +722,7 @@ export const AdminPage = () => {
                   setNewUser({ ...newUser, confirmPassword: value })
                 }
                 isRequired
+                color="primary"
               />
             </CardBody>
             <CardFooter>
@@ -811,3 +817,5 @@ export const AdminPage = () => {
     </div>
   );
 };
+
+export default AdminPage;

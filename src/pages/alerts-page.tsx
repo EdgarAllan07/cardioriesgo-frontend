@@ -22,7 +22,9 @@ import {
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import { addToast } from "@heroui/react";
+
 import axios from "axios";
+import { API_URL } from "../config/api";
 
 interface Alert {
   id_alerta: number;
@@ -89,15 +91,12 @@ export const AlertsPage = () => {
 
     try {
       const token = getToken();
-      const response = await axios.get(
-        `http://localhost:3000/api/alertas/${userId}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axios.get(`${API_URL}/api/alertas/${userId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       console.log("Alerts fetched:", response.data);
 
@@ -124,7 +123,7 @@ export const AlertsPage = () => {
     try {
       const token = getToken();
       const response = await axios.get(
-        `http://localhost:3000/api/alertas/config/${userId}`,
+        `${API_URL}/api/alertas/config/${userId}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -162,7 +161,7 @@ export const AlertsPage = () => {
     try {
       const token = getToken();
       await axios.patch(
-        `http://localhost:3000/api/alertas/${alertId}`,
+        `${API_URL}/api/alertas/${alertId}`,
         {
           estado: "Visto",
         },
@@ -201,7 +200,9 @@ export const AlertsPage = () => {
 
   // Mark all alerts as viewed
   const markAllAsViewed = async () => {
-    const newAlerts = alerts.filter((alert) => alert.estado === "nuevo");
+    const newAlerts = alerts.filter(
+      (alert) => alert.estado?.toLowerCase() === "nuevo"
+    );
 
     try {
       const token = getToken();
@@ -209,7 +210,7 @@ export const AlertsPage = () => {
       await Promise.all(
         newAlerts.map((alert) =>
           axios.patch(
-            `http://localhost:3000/api/alertas/${alert.id_alerta}`,
+            `${API_URL}/api/alertas/${alert.id_alerta}`,
             { estado: "Visto" },
             {
               headers: {
@@ -249,7 +250,7 @@ export const AlertsPage = () => {
       await Promise.all(
         selectedAlerts.map((alertId) =>
           axios.patch(
-            `http://localhost:3000/api/alertas/${alertId}`,
+            `${API_URL}/api/alertas/${alertId}`,
             { estado: "Visto" },
             {
               headers: {
@@ -292,7 +293,7 @@ export const AlertsPage = () => {
     try {
       const token = getToken();
       await axios.patch(
-        `http://localhost:3000/api/alertas/config/${userId}`,
+        `${API_URL}/api/alertas/config/${userId}`,
         {
           activar_notificaciones: config.activar_notificaciones,
           umbral_riesgo: config.umbral_riesgo,
@@ -437,7 +438,11 @@ export const AlertsPage = () => {
                   {paginatedAlerts.map((alert) => (
                     <TableRow
                       key={alert.id_alerta}
-                      className={alert.estado === "nuevo" ? "bg-content2" : ""}
+                      className={
+                        alert.estado?.toLowerCase() === "nuevo"
+                          ? "bg-content2"
+                          : ""
+                      }
                     >
                       <TableCell>
                         <Checkbox
@@ -488,7 +493,9 @@ export const AlertsPage = () => {
                           variant="flat"
                           size="sm"
                         >
-                          {alert.estado === "nuevo" ? "Nuevo" : alert.estado}
+                          {alert.estado?.toLowerCase() === "nuevo"
+                            ? "Nuevo"
+                            : alert.estado}
                         </Chip>
                       </TableCell>
                       <TableCell>
@@ -500,7 +507,7 @@ export const AlertsPage = () => {
                           >
                             Ver Paciente
                           </Button>
-                          {alert.estado === "nuevo" && (
+                          {alert.estado?.toLowerCase() === "nuevo" && (
                             <Button
                               size="sm"
                               variant="flat"
@@ -538,7 +545,11 @@ export const AlertsPage = () => {
                 )}
                 –{Math.min(currentPage * itemsPerPage, filteredAlerts.length)}{" "}
                 de {filteredAlerts.length} alertas •{" "}
-                {alerts.filter((a) => a.estado === "nuevo").length} nuevas
+                {
+                  alerts.filter((a) => a.estado?.toLowerCase() === "nuevo")
+                    .length
+                }{" "}
+                nuevas
               </p>
               {totalPages > 1 && (
                 <Pagination
@@ -621,3 +632,5 @@ export const AlertsPage = () => {
     </div>
   );
 };
+
+export default AlertsPage;

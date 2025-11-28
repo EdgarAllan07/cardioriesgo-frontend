@@ -26,7 +26,9 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { addToast } from "@heroui/react";
+
 import axios from "axios";
+import { API_URL } from "../config/api";
 
 interface Paciente {
   id_paciente: number;
@@ -118,15 +120,12 @@ export const AppointmentsPage = () => {
 
     try {
       const token = getToken();
-      const response = await axios.get(
-        `http://localhost:3000/api/citas/${userId}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axios.get(`${API_URL}/api/citas/${userId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       console.log("Appointments fetched:", response.data);
 
@@ -151,15 +150,12 @@ export const AppointmentsPage = () => {
 
     try {
       const token = getToken();
-      const response = await axios.get(
-        `http://localhost:3000/api/pacientes/${userId}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axios.get(`${API_URL}/api/pacientes/${userId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       console.log("Patients fetched:", response.data);
 
@@ -280,7 +276,7 @@ export const AppointmentsPage = () => {
 
     try {
       const token = getToken();
-      await axios.delete(`http://localhost:3000/api/citas/${confirmDelete}`, {
+      await axios.delete(`${API_URL}/api/citas/${confirmDelete}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -347,7 +343,7 @@ export const AppointmentsPage = () => {
         console.log("Update payload:", updatePayload);
 
         await axios.patch(
-          `http://localhost:3000/api/citas/${selectedAppointment.id_cita}`,
+          `${API_URL}/api/citas/${selectedAppointment.id_cita}`,
           updatePayload,
           {
             headers: {
@@ -375,7 +371,7 @@ export const AppointmentsPage = () => {
 
         console.log("Create payload:", createPayload);
 
-        await axios.post("http://localhost:3000/api/citas", createPayload, {
+        await axios.post(`${API_URL}/api/citas`, createPayload, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
@@ -516,6 +512,7 @@ export const AppointmentsPage = () => {
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="w-full sm:w-auto"
+                color="primary"
               />
 
               <Input
@@ -525,6 +522,7 @@ export const AppointmentsPage = () => {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="w-full sm:w-auto"
+                color="primary"
               />
             </div>
           </div>
@@ -702,6 +700,7 @@ export const AppointmentsPage = () => {
                       setFormData({ ...formData, fecha_cita: e.target.value })
                     }
                     isRequired
+                    color="primary"
                   />
 
                   <Input
@@ -713,6 +712,7 @@ export const AppointmentsPage = () => {
                       setFormData({ ...formData, hora_cita: e.target.value })
                     }
                     isRequired
+                    color="primary"
                   />
 
                   <Input
@@ -724,6 +724,7 @@ export const AppointmentsPage = () => {
                     }
                     className="md:col-span-2"
                     isRequired
+                    color="primary"
                   />
 
                   <Select
@@ -809,3 +810,5 @@ export const AppointmentsPage = () => {
     </div>
   );
 };
+
+export default AppointmentsPage;

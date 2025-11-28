@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import axios from "axios";
+import { API_URL } from "../config/api";
 
 import {
   Navbar,
@@ -18,10 +19,12 @@ import {
   DropdownItem,
   Avatar,
   Badge,
+  addToast,
 } from "@heroui/react";
 
 import { Icon } from "@iconify/react";
 import { useAlerts } from "@/hooks/use-alerts";
+import { useAppointments } from "@/hooks/use-appointments";
 
 interface User {
   id_usuario: string;
@@ -41,7 +44,10 @@ interface MainLayoutProps {
 export const MainLayout = ({ children, onLogout }: MainLayoutProps) => {
   const pathname = usePathname();
   const { alertsCount } = useAlerts();
+  const { appointments } = useAppointments();
   const [user, setUser] = useState<User | null>(null);
+  const [hasShownAppointmentToast, setHasShownAppointmentToast] =
+    useState(false);
 
   const isActive = (path: string) => pathname === path;
 
@@ -60,15 +66,12 @@ export const MainLayout = ({ children, onLogout }: MainLayoutProps) => {
     const token = getToken();
     if (userId) {
       try {
-        const response = await axios.get(
-          `http://localhost:3000/api/usuarios/${userId}`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await axios.get(`${API_URL}/api/usuarios/${userId}`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
         const data = Array.isArray(response.data)
           ? response.data[0]
           : response.data;
@@ -108,6 +111,30 @@ export const MainLayout = ({ children, onLogout }: MainLayoutProps) => {
       window.removeEventListener("userProfileUpdated", handleProfileUpdate);
     };
   }, [fetchUser]);
+
+  // Check for today's appointments
+  React.useEffect(() => {
+    if (appointments.length > 0 && !hasShownAppointmentToast) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const todaysAppointments = appointments.filter((appointment) => {
+        const appointmentDate = new Date(appointment.fecha_cita);
+        const appointmentDay = new Date(appointmentDate);
+        appointmentDay.setHours(0, 0, 0, 0);
+        return appointmentDay.getTime() === today.getTime();
+      });
+
+      if (todaysAppointments.length > 0) {
+        addToast({
+          title: "Citas para hoy",
+          description: `Tienes ${todaysAppointments.length} cita(s) programada(s) para hoy.`,
+          color: "primary",
+        });
+        setHasShownAppointmentToast(true);
+      }
+    }
+  }, [appointments, hasShownAppointmentToast]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -229,26 +256,6 @@ export const MainLayout = ({ children, onLogout }: MainLayoutProps) => {
       <main className="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
         {children}
       </main>
-
-      <footer className="py-4 px-6 border-t border-divider">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center">
-          <p className="text-small text-default-500">
-            © 2024 Sistema de Evaluación de Riesgo Cardiovascular con IA
-          </p>
-
-          <div className="flex gap-4 mt-2 sm:mt-0">
-            <HeroLink href="#" size="sm" color="foreground">
-              Política de Privacidad
-            </HeroLink>
-            <HeroLink href="#" size="sm" color="foreground">
-              Términos de Servicio
-            </HeroLink>
-            <HeroLink href="#" size="sm" color="foreground">
-              Contacto
-            </HeroLink>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

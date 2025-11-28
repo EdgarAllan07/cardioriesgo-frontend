@@ -100,10 +100,38 @@ export const RiskReportPage = () => {
   };
 
   const handleSendToPatient = () => {
+    if (!evaluation?.email) {
+      addToast({
+        title: "Error",
+        description: "El paciente no tiene un correo electrónico registrado",
+        color: "danger",
+      });
+      return;
+    }
+
+    if (!evaluation?.url_pdf) {
+      addToast({
+        title: "Error",
+        description: "No hay PDF disponible para enviar",
+        color: "danger",
+      });
+      return;
+    }
+
+    const subject = encodeURIComponent(
+      `Reporte de Evaluación de Riesgo - ${evaluation.nombre_completo}`
+    );
+    const body = encodeURIComponent(
+      `Estimado(a) ${evaluation.nombre_completo},\n\nAdjunto encontrará el enlace a su reporte de evaluación de riesgo cardiovascular:\n\n${evaluation.url_pdf}\n\nAtentamente,\nSu Equipo Médico`
+    );
+
+    window.location.href = `mailto:${evaluation.email}?subject=${subject}&body=${body}`;
+
     addToast({
-      title: "Reporte Enviado",
-      description: "El reporte ha sido enviado al correo del paciente",
-      color: "success",
+      title: "Abriendo Cliente de Correo",
+      description:
+        "Se está abriendo su aplicación de correo predeterminada. Si no sucede nada, asegúrese de tener una instalada (ej. Outlook).",
+      color: "warning",
     });
   };
 
@@ -616,3 +644,5 @@ export const RiskReportPage = () => {
     </div>
   );
 };
+
+export default RiskReportPage;
