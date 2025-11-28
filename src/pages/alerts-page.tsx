@@ -573,7 +573,7 @@ export const AlertsPage = () => {
             <h2 className="text-lg font-semibold">Configuración de Alertas</h2>
           </CardHeader>
           <CardBody className="space-y-6">
-            <div className="flex justify-between items-center">
+            {/* <div className="flex justify-between items-center">
               <div>
                 <p className="font-medium">Notificaciones por Correo</p>
                 <p className="text-small text-default-500">
@@ -587,7 +587,7 @@ export const AlertsPage = () => {
                   setConfig({ ...config, activar_notificaciones: value })
                 }
               />
-            </div>
+            </div> */}
 
             <div className="space-y-2">
               <div className="flex justify-between items-center">

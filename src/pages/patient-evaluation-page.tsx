@@ -291,7 +291,7 @@ const PatientEvaluationContent = () => {
                     }}
                     isRequired
                     classNames={{
-                      value: "text-foreground",
+                      value: "!text-black",
                     }}
                   >
                     {patients.map((patient) => (

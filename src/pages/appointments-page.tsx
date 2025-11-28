@@ -496,6 +496,8 @@ export const AppointmentsPage = () => {
               <Select
                 placeholder="Filtrar por estado"
                 value={statusFilter}
+                variant="flat"
+                color="primary"
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full sm:w-auto min-w-[180px]"
               >
