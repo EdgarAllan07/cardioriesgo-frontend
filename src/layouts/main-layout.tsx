@@ -11,6 +11,9 @@ import {
   NavbarBrand,
   NavbarContent,
   NavbarItem,
+  NavbarMenu,
+  NavbarMenuItem,
+  NavbarMenuToggle,
   Link as HeroLink,
   Button,
   Dropdown,
@@ -46,6 +49,7 @@ export const MainLayout = ({ children, onLogout }: MainLayoutProps) => {
   const { alertsCount } = useAlerts();
   const { appointments } = useAppointments();
   const [user, setUser] = useState<User | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [hasShownAppointmentToast, setHasShownAppointmentToast] =
     useState(false);
 
@@ -138,7 +142,17 @@ export const MainLayout = ({ children, onLogout }: MainLayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Navbar maxWidth="2xl" className="border-b border-divider">
+      <Navbar
+        maxWidth="2xl"
+        className="border-b border-divider"
+        onMenuOpenChange={setIsMenuOpen}
+      >
+        <NavbarContent className="sm:hidden" justify="start">
+          <NavbarMenuToggle
+            aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
+          />
+        </NavbarContent>
+
         <NavbarBrand>
           <Link href="/dashboard" className="flex items-center gap-2">
             <Icon icon="lucide:heart-pulse" className="text-primary text-2xl" />
@@ -251,6 +265,66 @@ export const MainLayout = ({ children, onLogout }: MainLayoutProps) => {
             </DropdownMenu>
           </Dropdown>
         </NavbarContent>
+
+        <NavbarMenu>
+          <NavbarMenuItem>
+            <HeroLink
+              className="w-full"
+              as={Link}
+              href="/dashboard"
+              color={isActive("/dashboard") ? "primary" : "foreground"}
+              size="lg"
+            >
+              Panel Principal
+            </HeroLink>
+          </NavbarMenuItem>
+          <NavbarMenuItem>
+            <HeroLink
+              className="w-full"
+              as={Link}
+              href="/patient-evaluation"
+              color={isActive("/patient-evaluation") ? "primary" : "foreground"}
+              size="lg"
+            >
+              Nueva Evaluación
+            </HeroLink>
+          </NavbarMenuItem>
+          <NavbarMenuItem>
+            <HeroLink
+              className="w-full"
+              as={Link}
+              href="/patient-history"
+              color={isActive("/patient-history") ? "primary" : "foreground"}
+              size="lg"
+            >
+              Historial de Pacientes
+            </HeroLink>
+          </NavbarMenuItem>
+          <NavbarMenuItem>
+            <HeroLink
+              className="w-full"
+              as={Link}
+              href="/appointments"
+              color={isActive("/appointments") ? "primary" : "foreground"}
+              size="lg"
+            >
+              Citas Médicas
+            </HeroLink>
+          </NavbarMenuItem>
+          {user?.tipo_usuario_id === "Administrador" && (
+            <NavbarMenuItem>
+              <HeroLink
+                className="w-full"
+                as={Link}
+                href="/admin"
+                color={isActive("/admin") ? "primary" : "foreground"}
+                size="lg"
+              >
+                Administración
+              </HeroLink>
+            </NavbarMenuItem>
+          )}
+        </NavbarMenu>
       </Navbar>
 
       <main className="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">

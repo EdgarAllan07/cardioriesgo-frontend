@@ -367,7 +367,7 @@ export const RiskReportPage = () => {
             <CardBody>
               {pieData.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="h-64">
+                  <div className="h-64 hidden md:block">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -378,7 +378,7 @@ export const RiskReportPage = () => {
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="value"
-                          label={({ name, value }) => `${name}: ${value}%`}
+                          
                         >
                           {pieData.map((entry, index) => (
                             <Cell
